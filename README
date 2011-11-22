@@ -1,0 +1,41 @@
+===========================================================================
+Stochastic Queuing Simulation
+Release v0.1
+===========================================================================
+
+1. Introduction
+
+Stochastic Queuing Simulation (SQS) targets specifically to investigate issues of data center 
+design at scale. At its core, SQS is a methodology for system characterization and discrete-event 
+simulation to enable quantitative exploration of data center-level challenges, such as performance 
+optimization, power provisioning, power management, distributed data placement, and fault-tolerant 
+design. 
+
+
+2. Environmental Setup
+
+Java version:
+We tested the code with OpenJDK 1.6 and IcedTea 1.6.1. Versions too early might not work as the 
+code uses RMI functions, but later versions should be OK. Sun Java 1.6 also works. 
+
+JPype Installation:
+Master needs JPype to be installed in order to launch SQS experiments. (Slaves only needs Java)
+You can use "apt-get install python-jpype" on Ubuntu 10.04 or later to install JPype
+Or download the source and install: http://jpype.sourceforge.net/
+We used the latest version 0.5.4.1. 
+You MUST set the environmental variable JAVA_HOME (commonly /usr/lib/jvm/java-6-openjdk) before 
+running SQS, because JPype rely on this env to start JVM. 
+
+
+3. Run SQS
+
+1) ssh onto master, where you want to launch SQS. JPype must be installed and JAVA_HOME must be 
+   properly set on master. 
+2) Write a machine config file. You can find a sample machine.cfg in root directory.
+3) Setup autossh across slaves. The master should be able to silently log on to all slaves via ssh 
+   and execute commands. You can run "./sqs.py setup machine.cfg" to setup autossh. You can use 
+   "./sqs.py copy machine.cfg" to test autossh funtionality. 
+4) "./sqs.py run machine.cfg" will start the default experiment defined in master.py. Please 
+   refer to master.py if you want to change experiment parameters (statistic targets, datacenter 
+   configurations, etc)
+5) You can use "./sqs.py kill machine.cfg" to cleanup if experiment fails halfway

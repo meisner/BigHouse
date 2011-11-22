@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project default="create_run_jar" name="Create Runnable Jar for Project ClusterSimPrime">
+    <!--this file was created by Eclipse Runnable JAR Export Wizard-->
+    <!--ANT 1.7 is required                                        -->
+    <property environment="env"/>
+    <path id="ClusterSimPrime.classpath">
+        <pathelement location="bin"/>
+        <pathelement location="junit.jar"/>
+        <pathelement location="org.hamcrest.core_1.1.0.jar"/>
+        <pathelement location="ssj.jar"/>
+    </path>
+    <target name ="compile">
+        <mkdir dir="bin"/>
+        <fileset dir="src" includes="/usr/share/java/*.jar"/>
+        <javac srcdir="src" destdir="bin" includeantruntime="false">
+            <src path="src"/>
+            <classpath refid="ClusterSimPrime.classpath"/>
+        </javac>
+    </target>
+    
+    <target name="clean">
+        <delete dir="bin"/>
+		<delete file="master.jar"/>
+		<delete file="slave.jar"/>
+    </target>
+    
+    <target name="create_run_jar" depends="compile">
+        <jar destfile="master.jar" filesetmanifest="mergewithoutmain">
+            <manifest>
+                <attribute name="Built-By" value="${user.name}"/>
+                <attribute name="Main-Class" value="master.Master"/>
+                <attribute name="Class-Path" value="."/>
+            </manifest>
+            <fileset dir="bin"/>
+            <zipfileset excludes="META-INF/*.SF" src="/usr/share/ant/lib/ant-junit.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="ssj.jar"/>
+        </jar>
+        <jar destfile="slave.jar" filesetmanifest="mergewithoutmain">
+            <manifest>
+                <attribute name="Built-By" value="${user.name}"/>
+                <attribute name="Main-Class" value="slave.Slave"/>
+                <attribute name="Class-Path" value="."/>
+            </manifest>
+            <fileset dir="bin"/>
+            <zipfileset excludes="META-INF/*.SF" src="/usr/share/ant/lib/ant-junit.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="ssj.jar"/>
+        </jar>
+    </target>
+</project>
