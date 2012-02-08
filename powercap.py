@@ -30,12 +30,12 @@
 # Authors: Junjie Wu (wujj@umich.edu)
 #
 
-# This script defines and runs a distributed SQS experiment
+# This script defines and runs a distributed Bighouse powercapping experiment
 # You shouldn't directly run this script from command line 
-# Instead, you should use sqs.py to launch SQS, which will invoke this file
-# This script uses JPype to access SQS Java library (Check README for JPype configuration)
+# Instead, you should use sqs.py to launch Bighouse, which will invoke this file
+# This script uses JPype to access Bighouse Java library (Check README for JPype configuration)
 
-# Most of the codes are JPype and SQS setups
+# Most of the codes are JPype and Bighouse setups
 # Due to the limition of JPype, everything has to happen in one file during one JVM session
 # The only things you need to change to script an experiment are stat_config and createExperiment()
 
@@ -64,10 +64,10 @@ sqs_CorePowerPolicy = jpype.JClass('datacenter.Core$CorePowerPolicy')
 
 # ========== Don't change code above unless you need to import new packages ==========
 
-# ========== Change stat_config and createExperiment() to define you own experiment ==========
+# ========== Change stat_config and createExperiment() to define your own experiment ==========
 
 # global statistic requirements for convergence
-# SQS will run until the aggregated result meets the statistical requirements
+# Bighouse will run until the aggregated result meets the statistical requirements
 # stat_config is a list of target statistics, each element is a 5-tuple
 # (stat name, mean precision requirement, quantile setting, quantile precision requirement, warmup samples)
 # stat name is the output you are interested in. Supported statname is defined in src/core/Constants.StatName
@@ -79,6 +79,7 @@ stat_config = [ (sqs_StatName.TOTAL_CAPPING, 0.05, 0.95, 0.05, 500),
 # this function defines an experiment (input distribution and datacenter)
 # when creating the master experiment, xValues should be zero
 # when creating slave experiments, xValues should be extracted from warmed-up master experiment
+# Please refer to runExperiment()) for xValues handling
 def createExperiment(xValues = []):
 
 	global stat_config
@@ -207,7 +208,7 @@ def runExperiment(cfg):
 		exit(1)
 
 def usage():
-	print "Usage: ./master.py <machine config>"
+	print "Usage: ./powercap.py <machine config>"
 	exit(1)
 	
 def exit(x):

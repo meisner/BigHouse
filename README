@@ -5,37 +5,41 @@ Release v0.1
 
 1. Introduction
 
-Stochastic Queuing Simulation (SQS) targets specifically to investigate issues of data center 
-design at scale. At its core, SQS is a methodology for system characterization and discrete-event 
-simulation to enable quantitative exploration of data center-level challenges, such as performance 
-optimization, power provisioning, power management, distributed data placement, and fault-tolerant 
-design. 
+Bighouse targets specifically to investigate issues of data center design at scale.  At its core, Bighouse is a methodology for system characterization and discrete-event simulation to enable quantitative exploration of data center-level challenges, such as performance optimization, power provisioning, power management, distributed data placement, and fault-tolerant design. 
 
 
 2. Environmental Setup
 
 Java version:
-We tested the code with OpenJDK 1.6 and IcedTea 1.6.1. Versions too early might not work as the 
-code uses RMI functions, but later versions should be OK. Sun Java 1.6 also works. 
+We tested the code with OpenJDK 1.6 and IcedTea 1.6.1.  Versions too early might not work as the 
+code uses RMI functions, but later versions should be OK.  Sun Java 1.6 also works. 
 
 JPype Installation:
-Master needs JPype to be installed in order to launch SQS experiments. (Slaves only needs Java)
+Master needs JPype to be installed in order to launch Bighouse experiments.  (Slaves only needs Java)
 You can use "apt-get install python-jpype" on Ubuntu 10.04 or later to install JPype
 Or download the source and install: http://jpype.sourceforge.net/
 We used the latest version 0.5.4.1. 
 You MUST set the environmental variable JAVA_HOME (commonly /usr/lib/jvm/java-6-openjdk) before 
-running SQS, because JPype rely on this env to start JVM. 
+running Bighouse, because JPype rely on this env to start JVM. 
 
 
-3. Run SQS
+3. Run Distributed Bighouse
 
-1) ssh onto master, where you want to launch SQS. JPype must be installed and JAVA_HOME must be 
-   properly set on master. 
+1) ssh into master, where you want to launch Bighouse. JPype must be installed and JAVA_HOME must be properly set on master. 
 2) Write a machine config file. You can find a sample machine.cfg in root directory.
-3) Setup autossh across slaves. The master should be able to silently log on to all slaves via ssh 
-   and execute commands. You can run "./sqs.py setup machine.cfg" to setup autossh. You can use 
-   "./sqs.py copy machine.cfg" to test autossh funtionality. 
-4) "./sqs.py run machine.cfg" will start the default experiment defined in master.py. Please 
-   refer to master.py if you want to change experiment parameters (statistic targets, datacenter 
-   configurations, etc)
+3) Setup autossh across slaves. The master should be able to silently log on to all slaves via ssh and execute commands. You can run "./sqs.py setup machine.cfg" to setup autossh. You can use "./sqs.py copy machine.cfg" to test autossh funtionality. 
+4) "./sqs.py run machine.cfg" will start the default experiment defined in powercap.py. Please refer to powercap.py if you want to change experiment parameters (statistic targets, datacenter configurations, etc)
 5) You can use "./sqs.py kill machine.cfg" to cleanup if experiment fails halfway
+
+
+4. Development and Debugging
+
+Python interface serves two purposes: 
+1) Distribute and run the experiment on multiple machines
+2) Easier scripting
+
+Due to limitation of JPype's exception handling, it won't produce the correct traceback when an exception occurs.  In addition, during development, it's not necessary to run the code on multiple machines.  Therefore, development is always done in Java.  If you don't need to run the experiment on multiple machines, it's not necessary to use the Python interface. 
+
+Once you've done debugging the Java class, it should be straight forward to port it to a Python file.  Please refer to the comments in powercap.py for instructions. 
+
+Sample Java classes are provided in src/experiments folder, and the Java counterpart of powercap.py is DistributedPowerCappingExperiment.java.  A local experiment PowerCappingExperiment.java and its Python port powercaplocal.py are also provided for reference.  

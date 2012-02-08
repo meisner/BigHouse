@@ -40,8 +40,8 @@ import core.Sim;
 
 public class PowerNapServer extends Server {
 
-	protected double nap_transition_time;
-	private double nap_power;
+	protected double nap_transition_time;	// in milliseconds
+	private double nap_power;	// relative to 100
 	
 //	protected Vector<Job> nap_job_queue;
 	

@@ -326,8 +326,6 @@ public class Core implements Powerable, Serializable{
 
 	public void resumeProcessing(double time) {
 		Sim.debug(666, "Core.resumeProcessing");
-
-		Sim.fatalError("Need to compnesate for changing speeds here");
 		
 		if(this.paused == false) {
 			Sim.fatalError("Core resumed when it was already running");

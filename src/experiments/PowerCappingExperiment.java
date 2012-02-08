@@ -46,6 +46,7 @@ import core.Constants.TimeWeightedStatName;
 import datacenter.DataCenter;
 import datacenter.PowerCappingEnforcer;
 import datacenter.Server;
+import datacenter.PowerNapServer;
 import datacenter.Core.CorePowerPolicy;
 import datacenter.Socket.SocketPowerPolicy;
 
@@ -115,6 +116,7 @@ public class PowerCappingExperiment {
 		PowerCappingEnforcer enforcer = new PowerCappingEnforcer(experiment, capPeriod, globalCap, maxPower, minPower);
 		for(int i = 0; i < nServers; i++) {
 			Server server = new Server(sockets, cores, experiment, arrivalGenerator, serviceGenerator);
+//			Server server = new PowerNapServer(sockets, cores, experiment, arrivalGenerator, serviceGenerator, 0.001, 5);
 
 			server.setSocketPolicy(SocketPowerPolicy.NO_MANAGEMENT);
 			server.setCorePolicy(CorePowerPolicy.NO_MANAGEMENT);	

@@ -48,7 +48,7 @@ import time
 
 machineList = []
 machineCfg = 'machine.cfg'
-experimentCfg = 'master.py'
+experimentCfg = 'powercap.py'
 passwd = ''
 
 def usage():
@@ -57,7 +57,7 @@ def usage():
 	- kill: kill all running slave.jar, rmiregistry processes
 	- copy: push binaries from master to slaves without running the simulation
 	- run: run the simulation
-	- default experimentconfig is master.py''')
+	- default experimentconfig is powercap.py''')
 	sys.exit(1)
 
 def readCfg(cfg):
