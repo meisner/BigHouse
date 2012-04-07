@@ -1,30 +1,101 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<project default="create_run_jar" name="Create Runnable Jar for Project Bighouse">
-    <!--this file was created by Eclipse Runnable JAR Export Wizard-->
-    <!--ANT 1.7 is required                                        -->
+<!-- 
+  Copyright (c) 2011 The Regents of The University of Michigan
+  All rights reserved.
+ 
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are
+  met: redistributions of source code must retain the above copyright
+  notice, this list of conditions and the following disclaimer;
+  redistributions in binary form must reproduce the above copyright
+  notice, this list of conditions and the following disclaimer in the
+  documentation and/or other materials provided with the distribution;
+  neither the name of the copyright holders nor the names of its
+  contributors may be used to endorse or promote products derived from
+  this software without specific prior written permission.
+ 
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+  Build file for the BigHouse Simulator. Requires ANT 1.7. 
+  David Meisner (meisner@umich.edu)
+
+  Can invoke as follows:
+
+  ant - builds Bighouse
+
+  ant test - builds (if needed) and runs the unit tests
+
+  ant compile - builds bigHouse
+
+  ant clean - cleans all the .jar and .class files
+
+-->
+<project default="create_run_jar">
+
+   <!-- Change this if you rename your experiment -->
+
+    <!-- Probably don't want to change these variables -->
+    <property name="TALK" value="true" />
+    <property name="javadoc-dir" location="javadoc" />
+    <property name="src-dir" location="src" />
+    <property name="bin-dir" location="bin" />
+    <property name="test-dir" location="${src-dir}/test" />
+    <property name="test-bin-dir" location="${bin-dir}/test" />
+    <property name="test-src-dir" location="${src-dir}/test" />
+    <property name="junit-jar" location="junit-4.10.jar" />
+    <property name="ssj-jar" location="ssj.jar" />
+    <property name="hamcrest-jar" location="org.hamcrest.core_1.1.0.jar" />
+
     <property environment="env"/>
+
+    <!-- Set the classpaths -->
     <path id="Bighouse.classpath">
-        <pathelement location="bin"/>
-        <pathelement location="junit.jar"/>
-        <pathelement location="org.hamcrest.core_1.1.0.jar"/>
-        <pathelement location="ssj.jar"/>
+        <pathelement location="${bin-dir}"/>
+        <pathelement location="${test-bin-dir}"/>
+        <pathelement location="${ssj-jar}"/>
+        <pathelement location="${junit-jar}"/>
+        <pathelement location="${hamcrest-jar}"/>
     </path>
+
+    <!-- Compile the system -->
     <target name ="compile">
-        <mkdir dir="bin"/>
-        <fileset dir="src" includes="/usr/share/java/*.jar"/>
-        <javac srcdir="src" destdir="bin" includeantruntime="false">
-            <src path="src"/>
+        <mkdir dir="${bin-dir}"/>
+        <fileset dir="${src-dir}" includes="/usr/share/java/*.jar"/>
+        <javac srcdir="${src-dir}" destdir="${bin-dir}" includeantruntime="false" debug="on">
+            <src path="${src-dir}"/>
             <classpath refid="Bighouse.classpath"/>
         </javac>
     </target>
     
+    <!-- Remove all the jar files -->
     <target name="clean">
-        <delete dir="bin"/>
-		<delete file="master.jar"/>
-		<delete file="slave.jar"/>
-		<delete file="powercap.jar"/>
+        <delete dir="${bin-dir}"/>
+        <delete dir="${javadoc-dir}"/>
+		    <delete file="master.jar"/>
+		    <delete file="slave.jar"/>
+		    <delete file="powercap.jar"/>
     </target>
-    
+
+    <!-- Run the tests -->
+    <target name="test" depends="compile">
+        <junit printsummary="yes">
+            <classpath refid="Bighouse.classpath" />
+            <formatter type="plain" usefile="false" />
+            <test name="test.AllTests" />
+        </junit>
+    </target>
+
+    <!-- Create the jar files -->
     <target name="create_run_jar" depends="compile">
         <jar destfile="master.jar" filesetmanifest="mergewithoutmain">
             <manifest>
@@ -57,4 +128,18 @@
             <zipfileset excludes="META-INF/*.SF" src="ssj.jar"/>
         </jar>
     </target>
+
+    <target name="javadoc">
+        <mkdir dir="${javadoc-dir}"/>
+        <javadoc 
+            destdir="${javadoc-dir}/"
+            additionalparam="-J-Dorg.apache.commons.attributes.javadoc.CATaglet.sources=${src-dir}">
+            <taglet
+                name="org.apache.commons.attributes.javadoc.CATaglet"
+                path="${ant.home}/lib/commons-attributes-compiler-2.2.jar"
+             />
+            <fileset dir="${src-dir}/" includes="**/*.java" />
+        </javadoc>
+    </target>
+
 </project>
