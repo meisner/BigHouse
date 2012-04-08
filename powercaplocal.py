@@ -22,7 +22,7 @@ CorePowerPolicy = jpype.JClass('datacenter.Core$CorePowerPolicy')
 meanPrecision = .05
 quantileSetting = .95
 quantilePrecision = .05
-warmupSamples = 50
+warmupSamples = 5000
 
 # this function creates an experiment
 def createExperiment(xValues = []):
@@ -30,8 +30,8 @@ def createExperiment(xValues = []):
 	global meanPrecision, quantileSetting, quantilePrecision, warmupSamples
 	
 	# service file
-	arrivalFile = "workloads/www.arrival.cdf"
-	serviceFile = "workloads/www.service.cdf"
+	arrivalFile = "workloads/csedns.arrival.cdf"
+	serviceFile = "workloads/csedns.service.cdf"
 
 	#specify distribution
 	cores = 4
@@ -69,7 +69,8 @@ def createExperiment(xValues = []):
 	arrivalGenerator = generator.EmpiricalGenerator(rand, arrivalDistribution, "arrival", arrivalScale)
 	serviceGenerator = generator.EmpiricalGenerator(rand, serviceDistribution, "service", 1.0)
 	experimentOutput = core.ExperimentOutput()
-	experimentOutput.addOutput(StatName.TOTAL_CAPPING, meanPrecision, quantileSetting, quantilePrecision, warmupSamples)
+	experimentOutput.addOutput(StatName.SOJOURN_TIME, meanPrecision, quantileSetting, quantilePrecision, warmupSamples)
+	experimentOutput.addOutput(StatName.SERVER_LEVEL_CAP, meanPrecision, quantileSetting, quantilePrecision, warmupSamples)
 	experiment = core.Experiment("Power capping test", rand, experimentInput, experimentOutput)
 
 	#setup datacenter	
@@ -77,7 +78,7 @@ def createExperiment(xValues = []):
 
 	nServers = 100	
 	capPeriod = 1.0
-	globalCap = 70.0 * nServers
+	globalCap = 65.0 * nServers
 	maxPower = 100.0 * nServers
 	minPower = 59.0 * nServers
 	enforcer = datacenter.PowerCappingEnforcer(experiment, capPeriod, globalCap, maxPower, minPower)
@@ -110,9 +111,13 @@ experiment = createExperiment()
 experiment.run()
 
 # experiment finished
-responseTimeMean = experiment.getStats().getStat(StatName.TOTAL_CAPPING).getAverage()
-print "Mean Capping: %s" % responseTimeMean
-responseTimeQuantile = experiment.getStats().getStat(StatName.TOTAL_CAPPING).getQuantile(quantileSetting)
-print "%s%% quantile Capping : %s" % (quantileSetting, responseTimeQuantile)
+responseTimeMean = experiment.getStats().getStat(StatName.SOJOURN_TIME).getAverage()
+print "SOJOURN_TIME mean : %s" % responseTimeMean
+responseTimeQuantile = experiment.getStats().getStat(StatName.SOJOURN_TIME).getQuantile(quantileSetting)
+print "%s quantile SOJOURN_TIME : %s" % (quantileSetting, responseTimeQuantile)
+cappingMean = experiment.getStats().getStat(StatName.SERVER_LEVEL_CAP).getAverage()
+print "Average Server Cap : %s" % cappingMean
 
+print "========== JPype Output Begin =========="
 jpype.shutdownJVM() 
+print "========== JPype Output End ============"

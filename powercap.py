@@ -73,8 +73,8 @@ sqs_CorePowerPolicy = jpype.JClass('datacenter.Core$CorePowerPolicy')
 # stat name is the output you are interested in. Supported statname is defined in src/core/Constants.StatName
 # precision requirements are denoted by alpha value
 # warmup samples are the number of samples discarded before collecting statistics
-stat_config = [ (sqs_StatName.TOTAL_CAPPING, 0.05, 0.95, 0.05, 500),
-				(sqs_StatName.SOJOURN_TIME, 0.05, 0.95, 0.05, 500) ]
+stat_config = [ (sqs_StatName.SERVER_LEVEL_CAP, 0.05, 0.95, 0.05, 5000),
+				(sqs_StatName.SOJOURN_TIME, 0.05, 0.95, 0.05, 5000) ]
 
 # this function defines an experiment (input distribution and datacenter)
 # when creating the master experiment, xValues should be zero
@@ -99,8 +99,8 @@ def createExperiment(xValues = []):
 	experiment = sqs_core.Experiment("Power capping test", rand, experimentInput, experimentOutput)
 	
 	# service file used by generators
-	arrivalFile = "workloads/www.arrival.cdf"
-	serviceFile = "workloads/www.service.cdf"
+	arrivalFile = "workloads/csedns.arrival.cdf"
+	serviceFile = "workloads/csedns.service.cdf"
 
 	# specify input distribution
 	cores = 4
@@ -139,7 +139,7 @@ def createExperiment(xValues = []):
 
 	nServers = 100	
 	capPeriod = 1.0
-	globalCap = 70.0 * nServers
+	globalCap = 65.0 * nServers
 	maxPower = 100.0 * nServers
 	minPower = 59.0 * nServers
 	enforcer = sqs_datacenter.PowerCappingEnforcer(experiment, capPeriod, globalCap, maxPower, minPower)
