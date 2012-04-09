@@ -55,9 +55,9 @@ This experiment uses csedns as workload, and simulates a power capping experimen
 Optionally, you can use Python to run a local experiment.  Please refer to 2.2 for the software setup.  To run the Python experiment, execute:
 ./powercaplocal.py
 
-The Java and Python code perform the same experiment.  BigHouse periodically outputs checkpoint information.  Results are displayed at the end.  
+The Java and Python code perform the same experiment.  Every experiment has three phases: warm up, calibration and steady state simulaton.  BigHouse periodically outputs checkpoint information.  Once stats converge, results are displayed at the end.  
 
-If the code runs correctly and you don not plan to run experiments on a cluster, you can directly skip to section 6.  
+If the code runs correctly and you do not plan to run experiments on a cluster, you can directly skip to section 6.  
 
 
 5. Run distributed experiment example
@@ -74,13 +74,14 @@ Usage: ./sqs.py <setup|kill|copy|run> <machineconfig> [experimentconfig]
 Follow these instructions for first-time setup: 
 1) ssh into master, where you want to launch BigHouse. JPype must be installed and JAVA_HOME must be properly set on master.  
 2) Write a machine config file. You can find a sample machine.cfg in root directory. 
-3) Setup autossh across slaves. The master should be able to silently log on to all slaves via ssh and execute commands. You can run "./sqs.py setup machine.cfg" to setup autossh. You can use "./sqs.py copy machine.cfg" to test autossh funtionality. 
+3) Setup autossh across slaves. The master should be able to silently log on to all slaves via ssh and execute commands. You can run "./sqs.py setup machine.cfg" to setup autossh. You can use "./sqs.py copy machine.cfg" to test autossh functionality. 
 
 Once your servers are configured, you can compile your code (Section 2), and run the experiment with sqs.py. 
 1) "./sqs.py run machine.cfg powercap.py" will start the example experiment defined in powercap.py.  Please refer to powercap.py if you want to change experiment parameters (e.g. statistic targets, datacenter configurations, etc).
 2) You can use "./sqs.py kill machine.cfg" to cleanup if necessary. 
 
-When the simulation finishes, "Final Statistics" section will contain SOJOURN_TIME and TOTAL_CAPPING results.  
+During the experiment, master first pings all slaves to make sure they are online.  If exception occurs at this stage, simply rerun the script.  
+After online checking, master starts its experiment, run warm up samples, calibrate the experiment and finally enters steady state, just as running a local experiment.  Then it distributes its current state to all slaves, and each slave begins running the experiment using different seeds.  All checkpoint information is displayed on the screen.  When the simulation finishes, "Final Statistics" section will contain SOJOURN_TIME and TOTAL_CAPPING results.  
 
 
 6. Development and Debugging
@@ -100,8 +101,8 @@ Sample Java classes are provided in src/experiments folder, and the Java counter
 
 7. Porting a Java experiment to Python
 
-JPype directly invokes Java methods in a Python file.  Therefore, porting a Java experiment to Python is quite easy.  Follow the following steps:
+JPype directly invokes Java methods in Python.  Therefore, porting a Java experiment to Python is quite easy.  Follow these steps:
 1) Import jar files and packages.  These formats are specified by JPype, and is required for invoking Java methods.  
 2) Port the createExperiment() method to Python.  It's mostly copy and paste, as Python code should follow exactly the same procedure to create an experiment.  In case some data type conversion is required, please refer to: http://jpype.sourceforge.net/doc/user-guide/userguide.html#conversion
-3) For a local experiment, you also need to manage the result output.  (Again, duplicate your Java code).  For a distributed experiment, you only need to replace createExperiment() in powercap.py, and the rest of the script takes care of warming up the experiment on the master, distribute it to slaves and collect results.  
+3) For a local experiment, you need to create an experiment instance and call run().  You also need to manage the result output.  (Again, duplicate your Java code).  For a distributed experiment, you only need to replace createExperiment() in powercap.py, and the rest of the script takes care of warming up the experiment on the master, distribute it to slaves and collect results.  
 
