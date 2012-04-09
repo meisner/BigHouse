@@ -57,8 +57,7 @@ def usage():
 	- setup: setup auto-ssh connection
 	- kill: kill all running slave.jar, rmiregistry processes
 	- copy: push binaries from master to slaves without running the simulation
-	- run: run the simulation
-	- default experimentconfig is powercap.py''')
+	- run: run the simulation, must specify experimentconfig''')
 	sys.exit(1)
 
 def dPrint(text):
@@ -279,6 +278,9 @@ def main(argv):
 		if argv[0] == "run":
 			if len(argv) == 3:
 				experimentCfg = argv[2]
+			else:
+				dPrint('''To run an experiment, experimentconfig must be specified''')
+				usage()
 			dPrint('''Experiment config file: %s''' % experimentCfg)
 			runSimulation()
 		elif argv[0] == "setup":

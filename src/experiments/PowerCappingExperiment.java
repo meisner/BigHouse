@@ -57,16 +57,12 @@ public class PowerCappingExperiment {
 	}//End PowerCappingExperiment()
 	
 	public void run(String workloadDir, String workload, int nServers) {
-		
 
-		ExperimentInput experimentInput = new ExperimentInput();		
-
-//		String arrivalFile = workloadDir+"workloads/www.arrival.cdf";
-//		String serviceFile = workloadDir+"workloads/www.service.cdf";
+		// service file
 		String arrivalFile = workloadDir+"workloads/"+workload+".arrival.cdf";
 		String serviceFile = workloadDir+"workloads/"+workload+".service.cdf";
-		System.out.println("arrival file "+arrivalFile);
-		System.out.println("service file "+arrivalFile);
+
+		// specify distribution
 		int cores = 4;
 		int sockets = 1;
 		double targetRho = .5;
@@ -83,32 +79,33 @@ public class PowerCappingExperiment {
 		double serviceRate = 1/averageServiceTime;
 		double scaledQps =(qps/arrivalScale);
 
+//		System.out.println("Cores " + cores);
+//		System.out.println("rho " + rho);		
+//		System.out.println("recalc rho " + scaledQps/(cores*(1/averageServiceTime)));
+//		System.out.println("arrivalScale " + arrivalScale);
+//		System.out.println("Average interarrival time " + averageInterarrival);
+//		System.out.println("QPS as is " +qps);
+//		System.out.println("Scaled QPS " +scaledQps);
+//		System.out.println("Service rate as is " + serviceRate);
+//		System.out.println("Service rate x" + cores + " is: "+ (serviceRate)*cores);
+//		System.out.println("\n------------------\n");
 
-		System.out.println("Cores " + cores);
-		System.out.println("rho " + rho);		
-		System.out.println("recalc rho " + scaledQps/(cores*(1/averageServiceTime)));
-		System.out.println("arrivalScale " + arrivalScale);
-		System.out.println("Average interarrival time " + averageInterarrival);
-		System.out.println("QPS as is " +qps);
-		System.out.println("Scaled QPS " +scaledQps);
-		System.out.println("Service rate as is " + serviceRate);
-		System.out.println("Service rate x" + cores + " is: "+ (serviceRate)*cores);
-		System.out.println("\n------------------\n");
+		// setup experiment
+		ExperimentInput experimentInput = new ExperimentInput();		
 
 		MTRandom rand = new MTRandom(1);
-		
 		EmpiricalGenerator arrivalGenerator  = new EmpiricalGenerator(rand, arrivalDistribution, "arrival", arrivalScale);
 		EmpiricalGenerator serviceGenerator  = new EmpiricalGenerator(rand, serviceDistribution, "service", 1.0);
+
+		// add experiment outputs
 		ExperimentOutput experimentOutput = new ExperimentOutput();
 		experimentOutput.addOutput(StatName.SOJOURN_TIME, .05, .95, .05, 5000);
 		experimentOutput.addOutput(StatName.SERVER_LEVEL_CAP, .05, .95, .05, 5000);
-//		experimentOutput.addTimeWeightedOutput(TimeWeightedStatName.SERVER_POWER, .01, .5, .01, 50000, .001);
 		Experiment experiment = new Experiment("Power capping test", rand, experimentInput, experimentOutput);
 		
+		// setup datacenter
 		DataCenter dataCenter = new DataCenter();
 		
-//		public PowerCappingEnforcer(Experiment experiment, double capPeriod, double globalCap, double maxPower, double minPower) {
-//		int nServers = 100;
 		double capPeriod = 1.0;
 		double globalCap = 65*nServers;
 		double maxPower = 100*nServers;
@@ -137,9 +134,13 @@ public class PowerCappingExperiment {
 			dataCenter.addServer(server);
 		}//End for i
 		
-		
 		experimentInput.addDataCenter(dataCenter);
+
+		// run the experiment
 		experiment.run();
+
+		// display results
+		System.out.println("====== Results ======");
 		double responseTimeMean = experiment.getStats().getStat(StatName.SOJOURN_TIME).getAverage();
 		System.out.println("Response Mean: " + responseTimeMean);
 		double responseTime95th = experiment.getStats().getStat(StatName.SOJOURN_TIME).getQuantile(.95);

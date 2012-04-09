@@ -52,7 +52,7 @@
     <property name="test-dir" location="${src-dir}/test" />
     <property name="test-bin-dir" location="${bin-dir}/test" />
     <property name="test-src-dir" location="${src-dir}/test" />
-    <property name="junit-jar" location="junit-4.10.jar" />
+    <property name="junit-jar" location="junit.jar" />
     <property name="ssj-jar" location="ssj.jar" />
     <property name="hamcrest-jar" location="org.hamcrest.core_1.1.0.jar" />
 

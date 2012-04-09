@@ -5,7 +5,7 @@ Release v0.1
 
 1. Introduction
 
-Bighouse targets specifically to investigate issues of data center design at scale.  At its core, Bighouse is a methodology for system characterization and discrete-event simulation to enable quantitative exploration of data center-level challenges, such as performance optimization, power provisioning, power management, distributed data placement, and fault-tolerant design. 
+BigHouse targets specifically to investigate issues of data center design at scale.  At its core, Bighouse is a methodology for system characterization and discrete-event simulation to enable quantitative exploration of data center-level challenges, such as performance optimization, power provisioning, power management, distributed data placement, and fault-tolerant design. 
 
 
 2. Platforms
@@ -14,7 +14,7 @@ BigHouse is developed under Mac OS and Linux in Java and Python.  BigHouse shoul
 
 2.1  Platform requirements for a local experiment
 
-Only Java installation is required to run a local experiment.  We tested the code with Java 1.6.0.  Versions too early might not work as the code uses RMI functions, but later versions should be OK.  Both OpenJDK and Sun Java works.  However, we recommend that you use the default openjdk package in your distro.  
+Only Java installation is required to run a local experiment.  We tested the code with Java 1.6.0.  Versions too early might not work as the code uses RMI functions, but later versions should be OK.  Both OpenJDK and Sun Java works.  However, we recommend that you use the default OpenJDK package in your distro.  
 
 2.2  Platform requirements for a distributed experiment
 
@@ -52,6 +52,11 @@ After you compile the local experiment, You can run the compiled experiment with
 "java -jar powercap.jar ./ csedns 100"
 This experiment uses csedns as workload, and simulates a power capping experiment with 100 servers.  It will output average response time and its 95 percentile. 
 
+Optionally, you can use Python to run a local experiment.  Please refer to 2.2 for the software setup.  To run the Python experiment, execute:
+./powercaplocal.py
+
+The Java and Python code perform the same experiment.  BigHouse periodically outputs checkpoint information.  Results are displayed at the end.  
+
 If the code runs correctly and you don not plan to run experiments on a cluster, you can directly skip to section 6.  
 
 
@@ -72,17 +77,17 @@ Follow these instructions for first-time setup:
 3) Setup autossh across slaves. The master should be able to silently log on to all slaves via ssh and execute commands. You can run "./sqs.py setup machine.cfg" to setup autossh. You can use "./sqs.py copy machine.cfg" to test autossh funtionality. 
 
 Once your servers are configured, you can compile your code (Section 2), and run the experiment with sqs.py. 
-1) "./sqs.py run machine.cfg" will start the default experiment defined in powercap.py. Please refer to powercap.py if you want to change experiment parameters (e.g. statistic targets, datacenter configurations, etc).
+1) "./sqs.py run machine.cfg powercap.py" will start the example experiment defined in powercap.py.  Please refer to powercap.py if you want to change experiment parameters (e.g. statistic targets, datacenter configurations, etc).
 2) You can use "./sqs.py kill machine.cfg" to cleanup if necessary. 
 
-When the simulation finishes, "Final Statistics" sections will contain SOJOURN_TIME and TOTAL_CAPPING results.  
+When the simulation finishes, "Final Statistics" section will contain SOJOURN_TIME and TOTAL_CAPPING results.  
 
 
 6. Development and Debugging
 
 The local power capping experiment is located in /src/experiments/PowerCappingExperiment.java.  Start by understanding the Java source code.  If you don't plan to run experiments on multiple machines, it's not necessary to use the Python interface.  
 
-Once you've done debugging the Java class and decided to run experiments on multiple machines, it should be straight forward to port it to a Python file.  Please refer to the comments in /powercap.py for instructions.  
+Once you've done debugging the Java class and decided to run experiments on multiple machines, it should be straight forward to port it to a Python file.  Please refer to next section.  
 
 Python serves two purposes in BigHouse: 
 1) Distribute and run the experiment on multiple machines (sqs.py)
@@ -91,3 +96,12 @@ Python serves two purposes in BigHouse:
 Due to limitation of JPype's exception handling, it won't produce the correct traceback when an exception occurs.  In addition, during development, it's not necessary to run the code on multiple machines.  Therefore, development is always done in Java.  
 
 Sample Java classes are provided in src/experiments folder, and the Java counterpart of powercap.py is DistributedPowerCappingExperiment.java.  A local experiment PowerCappingExperiment.java and a Python port powercaplocal.py are also provided for reference.  
+
+
+7. Porting a Java experiment to Python
+
+JPype directly invokes Java methods in a Python file.  Therefore, porting a Java experiment to Python is quite easy.  Follow the following steps:
+1) Import jar files and packages.  These formats are specified by JPype, and is required for invoking Java methods.  
+2) Port the createExperiment() method to Python.  It's mostly copy and paste, as Python code should follow exactly the same procedure to create an experiment.  In case some data type conversion is required, please refer to: http://jpype.sourceforge.net/doc/user-guide/userguide.html#conversion
+3) For a local experiment, you also need to manage the result output.  (Again, duplicate your Java code).  For a distributed experiment, you only need to replace createExperiment() in powercap.py, and the rest of the script takes care of warming up the experiment on the master, distribute it to slaves and collect results.  
+

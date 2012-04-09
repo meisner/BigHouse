@@ -51,16 +51,16 @@ def createExperiment(xValues = []):
 	scaledQps = (qps/arrivalScale)
 
 	# debug output
-	print "Cores: %s" % cores
-	print "rho: %s"	% rho
-	print "recalc rho: %s" % (scaledQps/(cores*(1/averageServiceTime)))
-	print "arrivalScale: %s" % arrivalScale
-	print "Average interarrival time: %s" % averageInterarrival
-	print "QPS as is %s" % qps
-	print "Scaled QPS: %s" % scaledQps
-	print "Service rate as is %s" % serviceRate
-	print "Service rate x: %s" % cores + " is: %s" % ((serviceRate)*cores)
-	print "\n------------------\n"
+#	print "Cores: %s" % cores
+#	print "rho: %s"	% rho
+#	print "recalc rho: %s" % (scaledQps/(cores*(1/averageServiceTime)))
+#	print "arrivalScale: %s" % arrivalScale
+#	print "Average interarrival time: %s" % averageInterarrival
+#	print "QPS as is %s" % qps
+#	print "Scaled QPS: %s" % scaledQps
+#	print "Service rate as is %s" % serviceRate
+#	print "Service rate x: %s" % cores + " is: %s" % ((serviceRate)*cores)
+#	print "\n------------------\n"
 
 	# setup experiment
 	experimentInput = core.ExperimentInput()
@@ -68,6 +68,8 @@ def createExperiment(xValues = []):
 	rand = generator.MTRandom(long(1))
 	arrivalGenerator = generator.EmpiricalGenerator(rand, arrivalDistribution, "arrival", arrivalScale)
 	serviceGenerator = generator.EmpiricalGenerator(rand, serviceDistribution, "service", 1.0)
+
+	# add experiment outputs
 	experimentOutput = core.ExperimentOutput()
 	experimentOutput.addOutput(StatName.SOJOURN_TIME, meanPrecision, quantileSetting, quantilePrecision, warmupSamples)
 	experimentOutput.addOutput(StatName.SERVER_LEVEL_CAP, meanPrecision, quantileSetting, quantilePrecision, warmupSamples)
@@ -111,6 +113,7 @@ experiment = createExperiment()
 experiment.run()
 
 # experiment finished
+print "====== Results ======"
 responseTimeMean = experiment.getStats().getStat(StatName.SOJOURN_TIME).getAverage()
 print "SOJOURN_TIME mean : %s" % responseTimeMean
 responseTimeQuantile = experiment.getStats().getStat(StatName.SOJOURN_TIME).getQuantile(quantileSetting)
@@ -118,6 +121,6 @@ print "%s quantile SOJOURN_TIME : %s" % (quantileSetting, responseTimeQuantile)
 cappingMean = experiment.getStats().getStat(StatName.SERVER_LEVEL_CAP).getAverage()
 print "Average Server Cap : %s" % cappingMean
 
-print "========== JPype Output Begin =========="
+print "====== JPype Output Begin (ignore this)======="
 jpype.shutdownJVM() 
-print "========== JPype Output End ============"
+print "====== JPype Output End (ignore this) ======="
