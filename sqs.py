@@ -50,36 +50,63 @@ machineList = []
 machineCfg = 'machine.cfg'
 experimentCfg = 'powercap.py'
 passwd = ''
+log = open('sqs.log','w')
 
 def usage():
 	print('''Usage: ./sqs.py <setup|kill|copy|run> <machineconfig> [experimentconfig]
 	- setup: setup auto-ssh connection
 	- kill: kill all running slave.jar, rmiregistry processes
 	- copy: push binaries from master to slaves without running the simulation
-	- run: run the simulation
-	- default experimentconfig is powercap.py''')
+	- run: run the simulation, must specify experimentconfig''')
 	sys.exit(1)
+
+def dPrint(text):
+	print text
+	log.write(text + '\n')
+
+def fPrint(text):
+	log.write(text + '\n')
 
 def readCfg(cfg):
 	f = open(cfg, 'r')
 	cfgContent = f.readline()
 	while cfgContent != '':
-		if cfgContent[0] == '#':
+		if cfgContent[0] == '#' or cfgContent == '\n':
 			cfgContent = f.readline()
 		else:
 			cfgContent = cfgContent.split()
 			if len(cfgContent) == 4:
 				machineList.append(cfgContent)
+			else:
+				dPrint("Malformatted machine configure file, quit")
+				dPrint("Malformatted line: %s" % cfgContent)
+				sys.exit(1)
 			cfgContent = f.readline()
 	f.close()
-	print "Machine List: %s" % machineList
-	print "========================================"
+	fPrint("Machine List: %s" % machineList)
+	fPrint("========================================")
 
 def runInteractive(cmd):
-	print ">> "+cmd
+	fPrint(">> " + cmd)
 	p = subprocess.Popen(cmd, shell=True, executable='/bin/bash', stderr=subprocess.STDOUT)
 	p.wait()
+	if p.returncode != 0:
+		print "SQS failed when running: %s\nPlease refer to sqs.log for details" % cmd
+		sys.exit(1)
 	return p.returncode
+
+def runInteractiveS(cmd):
+	fPrint(">> " + cmd)
+	p = subprocess.Popen(cmd, shell=True, executable='/bin/bash', stderr=subprocess.STDOUT, stdout=log)
+	p.wait()
+	if p.returncode != 0:
+		print "SQS failed when running: %s\nPlease refer to sqs.log for details" % cmd
+		sys.exit(1)
+	return p.returncode
+
+def runBackground(cmd):
+	fPrint(">> " + cmd + " (background)")
+	p = subprocess.Popen(cmd, shell=True, executable='/bin/bash', stderr=subprocess.STDOUT)
 
 def runSSHCmd(cmd):
 	# http://linux.byexamples.com/archives/346/python-how-to-access-ssh-with-pexpect/
@@ -88,45 +115,39 @@ def runSSHCmd(cmd):
 	p=pexpect.spawn(cmd)
 	i=p.expect([ssh_newkey,'password:',pexpect.EOF])
 	if i==0:
-		print "I say yes"
+		#print "I say yes"
 		p.sendline('yes')
 		i=p.expect([ssh_newkey,'password:',pexpect.EOF])
 	elif i==1:
 		p.sendline(passwd)
 		j=p.expect(['Permission denied, please try again.', pexpect.EOF])
 		if j==0:
-			print "Common password failed, Please enter the password"
+			dPrint("Common password failed, Please enter the password")
 			p.sendeof()
-			runInteractive(cmd)
+			runInteractiveS(cmd)
 		else:
-			print "Common password passed"
+			fPrint("Common password passed")
 	elif i==2:
 		pass
-	print p.before # print out the result
+	fPrint(p.before) # print out the result
 
-def runBackground(cmd):
-	print ">> "+cmd+" (background)"
-	p = subprocess.Popen(cmd, shell=True, executable='/bin/bash',stderr=subprocess.STDOUT)
-	time.sleep(1)
 
 def scpMasterToSlave():
 	if len(machineList) == 0:
 		sys.exit("Machine List empty")
 	else:
-		print "=============================================="
-		print "Copying files from current directory to slaves"
-		print "=============================================="
+		dPrint("==============================================")
+		dPrint("Copying files from current directory to slaves")
+		dPrint("==============================================")
 		for i in range(0,len(machineList)):
-			print "Slave #%d:" % i
+			dPrint("Copying files for slave #%d" % i)
 			slave = machineList[i][1] + '@' + machineList[i][0]
-			cmd = 'ssh ' + slave + " 'rm -rf %s/%s' " % (machineList[i][2], machineList[i][1])
-			#print "Slave #%d: %s" % (i, cmd)
-			runInteractive(cmd)
-			cmd = 'ssh ' + slave + " 'mkdir -p %s/%s' " % (machineList[i][2], machineList[i][1])
-			#print "Slave #%d: %s" % (i, cmd)
-			runInteractive(cmd)
-			cmd = 'scp -r -q . ' + machineList[i][1] + '@' + machineList[i][0] + ':' + machineList[i][2] + '/' + machineList[i][1]
-			runInteractive(cmd)
+#			cmd = 'ssh ' + slave + " 'rm -rf %s/%s' " % (machineList[i][2], machineList[i][1])
+#			runInteractiveS(cmd)
+#			cmd = 'ssh ' + slave + " 'mkdir -p %s/%s' " % (machineList[i][2], machineList[i][1])
+#			runInteractiveS(cmd)
+			cmd = 'rsync -r --delete . ' + machineList[i][1] + '@' + machineList[i][0] + ':' + machineList[i][2] + '/' + machineList[i][1]
+			runInteractiveS(cmd)
 			
 def startSim():
 	genScript()
@@ -138,14 +159,15 @@ def startSimHelper():
 
 	global experimentFile
 
-	print "========================================"
-	print "Starting Simulation"
-	print "========================================"
+	dPrint("========================================")
+	dPrint("Starting Simulation")
+	dPrint("========================================")
 	# slave
 	for i in range(0,len(machineList)):
 		cmd = "cd /tmp && sh slave_%d_%s.sh" % (i, machineList[i][1])
 		cmd = 'ssh ' + machineList[i][1] + '@' + machineList[i][0] + " '" + cmd + "' &"
-		print "Slave #%d: %s" % (i, cmd)
+		dPrint("Starting slave #%d..." % i)
+		fPrint("Slave #%d: %s" % (i, cmd))
 		runBackground(cmd)
 	# master
 	time.sleep(3)
@@ -153,29 +175,30 @@ def startSimHelper():
 	
 def scpLaunchScript():
 	# call genScript() before this function
-	print "========================================"
-	print "Copying launch scripts to machines"
-	print "========================================"
+	dPrint("========================================")
+	dPrint("Copying launch scripts to machines")
+	dPrint("========================================")
 	for i in range(0,len(machineList)):
 		machine = machineList[i][1] + '@' + machineList[i][0]
-		cmd = 'scp -r ' + "slave_%d.sh" % i + ' ' + machineList[i][1] + '@' + machineList[i][0] + ":/tmp/slave_%d_%s.sh" % (i, machineList[i][1])
-		print "Slave #%d: %s" % (i, cmd)
-		runInteractive(cmd)
-	print "Done"
+		cmd = 'rsync -r --delete ' + "slave_%d.sh" % i + ' ' + machineList[i][1] + '@' + machineList[i][0] + ":/tmp/slave_%d_%s.sh" % (i, machineList[i][1])
+		dPrint("Copying launch scripts to slave #%d" % i)
+		fPrint("Slave #%d: %s" % (i, cmd))
+		runInteractiveS(cmd)
+	dPrint("Done")
 	
 def cleanLocalDir():
-	print "========================================"
-	print "Cleaning generated scripts"
-	print "========================================"
+	dPrint("========================================")
+	dPrint("Cleaning generated scripts")
+	dPrint("========================================")
 	for i in range(0,len(machineList)):
 		os.remove("slave_%d.sh" % i)
-		print "slave_%d.sh removed" % i
-	print "Done"
+		fPrint("slave_%d.sh removed" % i)
+	dPrint("Done")
 	
 def genScript():
-	print "========================================"
-	print "Generating launch scripts"
-	print "========================================"
+	dPrint("========================================")
+	dPrint("Generating launch scripts")
+	dPrint("========================================")
 	for i in range(0,len(machineList)):
 		f = open("slave_%d.sh" % i, 'w')
 		f.write("#!/bin/bash\n\n")
@@ -186,45 +209,45 @@ def genScript():
 			cmd = 'cd ' + machineList[i][2] + '/' + machineList[i][1] + " && %s" % cmd
 			f.write(cmd + '\n')
 		f.close()
-		print "slave_%d.sh generated" % i
+		dPrint("slave_%d.sh generated" % i)
 		
 def killRMIRegs():
-	print "========================================"
-	print "Killing all previous simulations"
-	print "========================================"
+	dPrint("========================================")
+	dPrint("Killing all previous simulations")
+	dPrint("========================================")
 	for i in range(0,len(machineList)):
-		print "Slave #%d: Killing rmiregistry, slave.jar" % i
+		dPrint("Slave #%d: Killing rmiregistry, slave.jar" % i)
 		machine = machineList[i][1] + '@' + machineList[i][0]
-		cmd = 'scp -r ' + "cleanup.sh" + ' ' + machineList[i][1] + '@' + machineList[i][0] + ":/tmp/cleanup_%s.sh" % machineList[i][1]
-		runInteractive(cmd)
+		cmd = 'rsync -r --delete ' + "cleanup.sh" + ' ' + machineList[i][1] + '@' + machineList[i][0] + ":/tmp/cleanup_%s.sh" % machineList[i][1]
+		runInteractiveS(cmd)
 		cmd = "cd /tmp && ./cleanup_%s.sh" % machineList[i][1]
 		cmd = 'ssh ' + machineList[i][1] + '@' + machineList[i][0] + " '" + cmd + "'"
 		runBackground(cmd)
 		time.sleep(1)
-	print "\nPrevious simulation processes cleaned up"
+	dPrint("Done")
 
 def checkRSAFile():
 	sshPath = os.path.expanduser('~') + "/.ssh/"
 	if os.path.isfile(sshPath + 'id_rsa') and os.path.isfile(sshPath + 'id_rsa.pub'):
-		print "Using %sid_rsa and %sid_rsa" % (sshPath, sshPath)
+		dPrint("Using %sid_rsa and %sid_rsa" % (sshPath, sshPath))
 	else:
-		print "No existing RSA pair found under %s" % sshPath
-		print "Generating RSA pair...(hit enter whenever prompted)"
+		dPrint("No existing RSA pair found under %s" % sshPath)
+		dPrint("Generating RSA pair...(hit enter whenever prompted)")
 		runInteractive('ssh-keygen')
 
 def pushPublicKey():
 	PubKey = os.path.expanduser('~') + "/.ssh/id_rsa.pub"
 	PrivKey = os.path.expanduser('~') + "/.ssh/id_rsa"
 	for i in range(0, len(machineList)):
-		print "Slave #%d:" % i
 		slave = machineList[i][1] + '@' + machineList[i][0]
+		dPrint("Slave #%d: %s" % (i, slave))
 		cmd = '''scp ''' + PubKey + ' ' + slave + ':~'
-		print ">> " + cmd
+		fPrint(">> " + cmd)
 		runSSHCmd(cmd)
 		cmd = 'ssh ' + slave + " 'if [ ! -e ~/.ssh ]; then mkdir ~/.ssh; fi && cat ~/id_rsa.pub >> ~/.ssh/authorized_keys' "
-		print ">> " + cmd
+		fPrint(">> " + cmd)
 		runSSHCmd(cmd)
-	print "SSH setup finished. "
+	dPrint("SSH setup finished. ")
 
 def runSimulation():
 	readCfg(machineCfg)
@@ -234,28 +257,31 @@ def runSimulation():
 	
 def setupSSH():
 	global passwd
-	print "========================================"
-	print('''Setup ssh connection for %s''' % machineCfg)
-	print "========================================"
+	dPrint("========================================")
+	dPrint('''Setup ssh connection for %s''' % machineCfg)
+	dPrint("========================================")
 	checkRSAFile()
-	print '''Please input the most commonly used password across the slaves'''
+	dPrint("Please input the most commonly used password across the slaves")
 	passwd=getpass.getpass()
 	readCfg(machineCfg)
 	pushPublicKey()
 
 def main(argv):
 
-	global machineCfg, experimentCfg
+	global machineCfg, experimentCfg, log
 	
 	if len(argv) < 2:
 		usage()
 	else: 
 		machineCfg = argv[1]
-		print('''Machine config file: %s''' % machineCfg)
+		dPrint('''Machine config file: %s''' % machineCfg)
 		if argv[0] == "run":
 			if len(argv) == 3:
 				experimentCfg = argv[2]
-			print('''Experiment config file: %s''' % experimentCfg)
+			else:
+				dPrint('''To run an experiment, experimentconfig must be specified''')
+				usage()
+			dPrint('''Experiment config file: %s''' % experimentCfg)
 			runSimulation()
 		elif argv[0] == "setup":
 			setupSSH()
@@ -267,6 +293,8 @@ def main(argv):
 			scpMasterToSlave()
 		else:
 			usage()
+
+	log.close()
 	
 if __name__ == "__main__":
     main(sys.argv[1:])

@@ -40,7 +40,6 @@
   ant clean - cleans all the .jar and .class files
 
   ant javadoc - builds the javadocs
-
 -->
 <project default="create_run_jar">
 
