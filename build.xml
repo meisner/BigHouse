@@ -121,7 +121,7 @@
         <jar destfile="powercap.jar">
             <manifest>
                 <attribute name="Built-By" value="${user.name}"/>
-                <attribute name="Main-Class" value="experiments.PowerCappingExperiment"/>
+                <attribute name="Main-Class" value="experiment.PowerCappingExperiment"/>
                 <attribute name="Class-Path" value="."/>
             </manifest>
             <fileset dir="bin"/>

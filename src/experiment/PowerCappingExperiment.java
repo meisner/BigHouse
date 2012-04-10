@@ -130,7 +130,7 @@ public class PowerCappingExperiment {
 			dataCenter.addServer(server);
 		}//End for i
 		
-		experimentInput.addDataCenter(dataCenter);
+		experimentInput.setDataCenter(dataCenter);
 
 		// run the experiment
 		experiment.run();
