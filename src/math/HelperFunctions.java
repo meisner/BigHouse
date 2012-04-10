@@ -25,20 +25,36 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 package math;
 
-public class HelperFunctions {
+/**
+ * Helper functions of various math routines will go here.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
+public final class HelperFunctions {
 
-	public static long fac(long num){
-		
-		long fac = 1;
-		for( int i = 0; i < num; i++){
-			fac *= (num - i);
-		}
-		
-		return fac;
-	}
+    /** Prevents this class from being instantiated. */
+    private HelperFunctions() {
+
+    }
+
+    /**
+     * Takes the factorial of a value.
+     *
+     * @param value - value to take the factorial of
+     * @return - the value's factorial
+     */
+    public static long factorial(final long value) {
+        long fac = 1;
+        for (int i = 0; i < value; i++) {
+            fac *= (value - i);
+        }
+
+        return fac;
+    }
+
 }

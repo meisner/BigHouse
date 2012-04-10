@@ -38,8 +38,8 @@ def createExperiment(xValues = []):
 	sockets = 1
 	targetRho = 0.5
 
-	arrivalDistribution = math.Distribution.loadDistribution(arrivalFile, 1e-3)
-	serviceDistribution = math.Distribution.loadDistribution(serviceFile, 1e-3)
+	arrivalDistribution = math.EmpiricalDistribution.loadDistribution(arrivalFile, 1e-3)
+	serviceDistribution = math.EmpiricalDistribution.loadDistribution(serviceFile, 1e-3)
 
 	averageInterarrival = arrivalDistribution.getMean()
 	averageServiceTime = serviceDistribution.getMean()
@@ -87,7 +87,7 @@ def createExperiment(xValues = []):
 		server.setSocketPolicy(SocketPowerPolicy.NO_MANAGEMENT)
 		server.setCorePolicy(CorePowerPolicy.NO_MANAGEMENT)	
 		coreActivePower = 40 * (4.0/5)/cores
-		coreHaltPower = coreActivePower*0.2
+		coreIdlePower = coreActivePower*0.2
 		coreParkPower = 0.0
 
 		socketActivePower = 40 * (1.0/5)/sockets
@@ -95,14 +95,14 @@ def createExperiment(xValues = []):
 
 		server.setCoreActivePower(coreActivePower)
 		server.setCoreParkPower(coreParkPower)
-		server.setCoreHaltPower(coreHaltPower)
+		server.setCoreIdlePower(coreIdlePower)
 
 		server.setSocketActivePower(socketActivePower)
 		server.setSocketParkPower(socketParkPower)
 		enforcer.addServer(server)
 		dataCenter.addServer(server)
 		
-	experimentInput.addDataCenter(dataCenter)
+	experimentInput.setDataCenter(dataCenter)
 	
 	return experiment
 

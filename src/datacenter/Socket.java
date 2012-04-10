@@ -25,7 +25,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 package datacenter;
@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Vector;
 
+import core.Constants;
 import core.Event;
 import core.Experiment;
 import core.Job;
@@ -44,352 +45,525 @@ import core.SocketExitedParkEvent;
 import datacenter.Core.CorePowerPolicy;
 
 /**
- * This class represents a single socket (physical processor chip) in a server
+ * This class represents a single socket (physical processor chip) in a server.
+ *
+ * @author David Meisner (meisner@umich.edu)
  */
-public class Socket implements Powerable, Serializable{
-
-	/** The server this Socket belongs to */
-	private Server server;
-	/** The number of cores in this chip */
-	private int nCores;
-
-	private Experiment experiment;
-
-	private HashMap<Job, Core> jobToCoreMap;
-	
-	/** Available power states */
-	private enum SocketPowerState{ACTIVE, TRANSITIONG_TO_LOW_POWER_IDLE, TRANSITIONG_TO_ACTIVE, LOW_POWER_IDLE}; 
-	/** Available power management policies */
-	public static enum SocketPowerPolicy{NO_MANAGEMENT, SOCKET_PARKING}; 
-	
-	private SocketPowerPolicy power_policy;
-	private SocketPowerState power_state;
-
-	/** Cores which aren't busy */
-	private Vector<Core> available_cores;
-	/** Cores that are busy with a job */
-	private Vector<Core> busy_cores; 
-	private Vector<Job> transistion_queue;
-
-	private double socket_park_power = 0.0d;
-	private double socket_active_idle_power = 0.0d;
-	private double socket_park_transition_time = 500e-6;
-	private Event trasition_event;
-
-	/**
-	 * Instantiate a socket with nCores cores
-	 */
-	public Socket(Experiment experiment, Server server, int nCores){
-
-		this.experiment = experiment;
-		this.server = server;
-		this.nCores = nCores;
-
-		this.jobToCoreMap = new HashMap<Job, Core>(); 
-
-		this.available_cores = new Vector<Core>();
-		this.busy_cores = new Vector<Core>();
-		this.transistion_queue = new Vector<Job>();
-	
-		//Create nCores Cores and put them on the free list
-		for(int i = 0; i < nCores; i++){
-			Core core = new Core(experiment,this,this.server);
-			this.available_cores.add(core);
-		}//End for i
-		
-		this.power_policy = SocketPowerPolicy.NO_MANAGEMENT;
-		this.power_state = SocketPowerState.ACTIVE;
-
-	}//End Socket()
-
-	/**
-	 * Start a job for the first time on the socket.
-	 * It will be assigned to a random core.
-	 */
-	public void insertJob(double time, Job job){
-
-		if(this.power_state == SocketPowerState.ACTIVE) {
-			//Pick the first core off the available cores
-			Core core = this.available_cores.remove(0);
-			core.insertJob(time, job);
-			this.busy_cores.add(core);
-
-			//Memoize where the job was put
-			this.jobToCoreMap.put(job, core);
-		} else if(this.power_state == SocketPowerState.TRANSITIONG_TO_LOW_POWER_IDLE) {
-						
-			this.transistion_queue.add(job);
-			this.power_state = SocketPowerState.TRANSITIONG_TO_ACTIVE;
-			
-			if(this.trasition_event != null){
-				this.experiment.cancelEvent(this.trasition_event);
-			}
-
-			double exitParkTime = time + this.socket_park_transition_time;
-			SocketExitedParkEvent socketExitedParkEvent = new SocketExitedParkEvent(exitParkTime, this.experiment, this);
-			this.experiment.addEvent(socketExitedParkEvent);
-			
-		} else if(this.power_state == SocketPowerState.TRANSITIONG_TO_ACTIVE) {
-			
-			this.transistion_queue.add(job);
-			
-		} else if(this.power_state == SocketPowerState.LOW_POWER_IDLE) {
-			
-			this.transistion_queue.add(job);
-			this.power_state = SocketPowerState.TRANSITIONG_TO_ACTIVE;
-			double exitParkTime = time + this.socket_park_transition_time;
-			SocketExitedParkEvent socketExitedParkEvent = new SocketExitedParkEvent(exitParkTime, this.experiment, this);
-			this.experiment.addEvent(socketExitedParkEvent);
-			
-		}
-
-	}//End insertJob()
-
-	/**
-	 * Removes a job from the socket from completion
-	 */
-	public void removeJob(double time, Job job, boolean jobWaiting){
-
-		//Find out which socket this job was running on
-		Core core = this.jobToCoreMap.remove(job);
-		//		System.out.println("Map size is " + this.jobToCoreMap.size());
-		core.removeJob(time, job, jobWaiting);
-
-		//Error check we got a real socket
-		if(core == null){
-			Sim.fatalError("Couldn't resolve which core this job belonged to");
-		}
-
-		//Mark that the job is no longer busy
-		boolean found = this.busy_cores.remove(core);
-
-		//Error check the socket was considered busy
-		if(!found){
-			Sim.fatalError("Could take core off the busy list");
-		}
-
-		//Core is now available
-		this.available_cores.add(core);
-		
-		if(this.busy_cores.size() == 0 && jobWaiting == false) {
-			if(this.power_policy == SocketPowerPolicy.SOCKET_PARKING) {
-				this.power_state = SocketPowerState.TRANSITIONG_TO_LOW_POWER_IDLE;
-				double enterParkTime = time + this.socket_park_transition_time;
-				SocketEnteredParkEvent socketEnteredParkEvent = new SocketEnteredParkEvent(enterParkTime, this.experiment, this);
-				this.experiment.addEvent(socketEnteredParkEvent);
-				this.trasition_event = socketEnteredParkEvent;
-			}
-			//Otherwise the socket stays active	
-			
-		}
-
-	}//End removeJob()
-
-	/**
-	 * Gets the number of cores that have slots for jobs
-	 */
-	public int getRemainingCapacity(){
-		return this.available_cores.size() - this.transistion_queue.size();
-	}
-
-	/**
-	 * Gets the number of jobs this socket can ever support.
-	 */
-	public int getTotalCapacity(){
-		return this.nCores;
-	}
-
-	/**
-	 * Gets the instant utilization of the socket (busy cores/ total cores).
-	 */
-	public double getInstantUtilization(){
-		return ((double)this.busy_cores.size() + this.transistion_queue.size())/this.nCores;
-	}//End getInstantUtilization()
-
-	/**
-	 * Gets an Vector of cores on this socket
-	 */
-	public Vector<Core> getCores(){
-
-		Vector<Core> combined = new Vector<Core>(); 
-		combined.addAll(this.available_cores);
-		combined.addAll(this.busy_cores);
-
-		return combined;
-
-	}//End getCores()
-
-	public Server getServer() {
-		return this.server;
-	}//End getServer()
-
-	public int getJobsInService() {
-		return this.busy_cores.size();
-	}//End getJobsInService()
-
-
-	public void setCorePolicy(CorePowerPolicy corePowerPolicy) {
-		Vector<Core> cores = this.getCores();
-		Iterator<Core> iter = cores.iterator();
-		while(iter.hasNext()) {
-			Core core = iter.next();
-			core.setPowerPolicy(corePowerPolicy);
-		}//End while
-
-	}//End setCorePolicy()
-
-	public void setPowerPolicy(SocketPowerPolicy policy) {
-		this.power_policy = policy;
-	}
-	
-	
-	public void enterPark(double time) {
-
-		if(this.busy_cores.size() != 0) {
-			Sim.fatalError("Socket tried to enter park when it shouldn't have");
-		}
-
-		this.power_state = SocketPowerState.LOW_POWER_IDLE;
-	}
-
-
-	public void exitPark(double time) {
-
-		this.power_state = SocketPowerState.ACTIVE;
-		Iterator<Job> iter = this.transistion_queue.iterator();
-		while(iter.hasNext()) {
-			Job job = iter.next();
-			this.insertJob(time, job);
-		}
-		this.transistion_queue.clear();
-	}
-
-	public int getJobsInTransistion() {
-		return this.transistion_queue.size();
-		
-	}
-
-	public void pauseProcessing(double time) {
-		
-		Sim.debug(666, "...|...|...|...PAUSING socket  at " + time);
-
-		Vector<Core> cores = this.getCores();
-		Iterator<Core> iter = cores.iterator();
-		while(iter.hasNext()) {
-			Core core = iter.next();
-			core.pauseProcessing(time);
-		}
-	}
-
-	public void resumeProcessing(double time) {
-		Sim.debug(666, "Socket.resumeProcessing");
-
-		Sim.debug(666, "...|...|...|...RESUMING socket  at " + time);
-
-		Vector<Core> cores = this.getCores();
-		Iterator<Core> iter = cores.iterator();
-		while(iter.hasNext()) {
-			Core core = iter.next();
-			core.resumeProcessing(time);
-		}
-		
-	}
-
-	public void setSocketActivePower(double socketActivePower) {
-		this.socket_active_idle_power = socketActivePower;
-
-	}
-
-	public void setSocketParkPower(double socketParkPower) {
-		this.socket_park_power = socketParkPower;		
-	}
-
-	public void setCoreHaltPower(double coreHaltPower) {
-		Iterator<Core> iter = this.getCores().iterator();
-		while(iter.hasNext()) {
-			Core core = iter.next();
-			core.setHaltPower(coreHaltPower);
-		}
-	}
-
-	public void setCoreParkPower(double coreParkPower) {
-
-		Iterator<Core> iter = this.getCores().iterator();
-		while(iter.hasNext()) {
-			Core core = iter.next();
-			core.setParkPower(coreParkPower);
-		}
-		
-	}
-
-	public void setCoreActivePower(double coreActivePower) {
-		Iterator<Core> iter = this.getCores().iterator();
-		while(iter.hasNext()) {
-			Core core = iter.next();
-			core.setActivePower(coreActivePower);
-		}
-	}
-	
-	public void setDvfsSpeed(double time, double speed) {
-		Iterator<Core> iter = this.getCores().iterator();
-		while(iter.hasNext()) {
-			iter.next().setDvfsSpeed(time, speed);
-		}//End while
-	}//End setDvfsSpeed()
-	
-	public double getPower() {
-
-		return this.getDynamicPower() + this.getIdlePower();
-
-	}//End getPower()
-
-
-	public double getIdlePower() {
-
-		double idlePower = 0.0d;
-		
-		if(this.power_state == SocketPowerState.ACTIVE) { 
-			
-			Iterator<Core> coreIter = this.getCores().iterator();
-			while(coreIter.hasNext()) {
-				Core core = coreIter.next();
-				double corePower = core.getIdlePower();
-				idlePower += corePower;
-			}//End while
-
-			idlePower += this.socket_active_idle_power;
-			
-		} else if (this.power_state == SocketPowerState.TRANSITIONG_TO_ACTIVE) {
-			
-			idlePower =  this.socket_active_idle_power;			
-			
-		} else if (this.power_state == SocketPowerState.TRANSITIONG_TO_LOW_POWER_IDLE) {
-			
-			idlePower =  this.socket_active_idle_power;			
-			
-		} else if (this.power_state == SocketPowerState.LOW_POWER_IDLE) {
-			
-			idlePower =  this.socket_park_power;
-			
-		}//End if/else
-		
-		return idlePower;
-		
-	}//End getIdlePower()
-
-	public double getDynamicPower() {
-
-		double dynamicPower = 0.0d;
-
-		Iterator<Core> coreIter = this.getCores().iterator();
-		while(coreIter.hasNext()) {
-			Core core = coreIter.next();
-			double corePower = core.getDynamicPower();
-			dynamicPower += corePower;
-		}//End while
-
-		return dynamicPower;
-
-	}//End getDynamicPower()
-
-}///End class Socket
+public final class Socket implements Powerable, Serializable {
+
+    /**
+     * The serialization id.
+     */
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * The server this Socket belongs to.
+     */
+    private Server server;
+
+    /**
+     * The number of cores in this socket.
+     */
+    private int nCores;
+
+    /**
+     * The experiment the socket is part of.
+     */
+    private Experiment experiment;
+
+    /**
+     * A mapping of jobs to cores.
+     * This allows bookeeping of cores when jobs finish.
+     */
+    private HashMap<Job, Core> jobToCoreMap;
+
+    /**
+     * Available socket power states.
+     */
+    private enum SocketPowerState {
+        /**
+         * Socket is active and can process jobs.
+         */
+        ACTIVE,
+
+        /**
+         * Socket is in the process of transitioning to idle.
+         */
+        TRANSITIONG_TO_LOW_POWER_IDLE,
+
+        /**
+         * Socket is in the process of transitioning to active.
+         */
+        TRANSITIONG_TO_ACTIVE,
+
+        /**
+         * Socket is in a low-power idle state.
+         */
+        LOW_POWER_IDLE
+    };
+
+    /**
+     * Available power management policies for the socket.
+     */
+    public static enum SocketPowerPolicy {
+        /**
+         * No power management policy is being used.
+         */
+        NO_MANAGEMENT,
+
+        /**
+         * Socket goes into socket parking.
+         */
+        SOCKET_PARKING
+    };
+
+    /**
+     * The policy used by the socket for power management.
+     */
+    private SocketPowerPolicy powerPolicy;
+
+    /**
+     * The power state of the socket.
+     */
+    private SocketPowerState powerState;
+
+    /**
+     * Cores are available to process jobs.
+     */
+    private Vector<Core> availableCores;
+
+    /**
+     *  Cores that are busy processing a job.
+     */
+    private Vector<Core> busyCores;
+
+    /**
+     * A temporary queue for jobs while a socket is transitioning.
+     */
+    private Vector<Job> transitionQueue;
+
+    /** The power consumed by the socket in park (in watts). */
+    private double socketParkPower;
+
+    /** The power consumed by the socket while idle (in watts). */
+    private double socketActiveIdlePower;
+
+    /** The transition time of the socket in and out of park (in seconds) .*/
+    private double socketParkTransitionTime;
+
+    /**
+     * The event transitioning the socket.
+     * Used to allow cancellation if a job arrival interrupts the transition.
+     */
+    private Event trasitionEvent;
+
+    /**
+     * Instantiate a socket with nCores cores.
+     *
+     * @param anExperiment - the experiment the socket is part of
+     * @param aServer - the server the socket is part of
+     * @param theNCores - the number of cores in the socket
+     */
+    public Socket(final Experiment anExperiment,
+                  final Server aServer,
+                  final int theNCores) {
+
+        this.experiment = anExperiment;
+        this.server = aServer;
+        this.nCores = theNCores;
+
+        this.jobToCoreMap = new HashMap<Job, Core>();
+        this.availableCores = new Vector<Core>();
+        this.busyCores = new Vector<Core>();
+        this.transitionQueue = new Vector<Job>();
+
+        // Create nCores Cores and put them on the free list
+        for (int i = 0; i < nCores; i++) {
+            Core core = new Core(experiment, this);
+            this.availableCores.add(core);
+        }
+
+        this.powerPolicy = SocketPowerPolicy.NO_MANAGEMENT;
+        this.powerState = SocketPowerState.ACTIVE;
+    }
+
+    /**
+     * Start a job for the first time on the socket.
+     * It will be assigned to a random core.
+     *
+     * @param time - the time the job is inserted
+     * @param job - the job being inserted
+     */
+    public void insertJob(final double time, final Job job) {
+
+        if (this.powerState == SocketPowerState.ACTIVE) {
+            // Pick the first core off the available cores
+            Core core = this.availableCores.remove(0);
+            core.insertJob(time, job);
+            this.busyCores.add(core);
+
+            // Save the core the job is on so we can remove it later
+            this.jobToCoreMap.put(job, core);
+        } else if (this.powerState
+                   == SocketPowerState.TRANSITIONG_TO_LOW_POWER_IDLE) {
+            this.transitionQueue.add(job);
+            this.powerState = SocketPowerState.TRANSITIONG_TO_ACTIVE;
+
+            if (this.trasitionEvent != null) {
+                this.experiment.cancelEvent(this.trasitionEvent);
+            }
+
+            double exitParkTime = time + Constants.SOCKET_PARK_TRANSITION_TIME;
+            SocketExitedParkEvent socketExitedParkEvent
+                    = new SocketExitedParkEvent(exitParkTime,
+                                                this.experiment,
+                                                this);
+            this.experiment.addEvent(socketExitedParkEvent);
+        } else if (this.powerState == SocketPowerState.TRANSITIONG_TO_ACTIVE) {
+            this.transitionQueue.add(job);
+        } else if (this.powerState == SocketPowerState.LOW_POWER_IDLE) {
+            this.transitionQueue.add(job);
+            this.powerState = SocketPowerState.TRANSITIONG_TO_ACTIVE;
+            double exitParkTime = time + Constants.SOCKET_PARK_TRANSITION_TIME;
+            SocketExitedParkEvent socketExitedParkEvent
+                = new SocketExitedParkEvent(exitParkTime,
+                                            this.experiment,
+                                            this);
+            this.experiment.addEvent(socketExitedParkEvent);
+        }
+
+    }
+
+    /**
+     * Removes a job from the socket due to completion.
+     *
+     * @param time - the time the job is removed
+     * @param job - the job being removed
+     * @param jobWaiting - If there is a job waiting for this to be removed
+     */
+    public void removeJob(final double time,
+                          final Job job,
+                          final boolean jobWaiting) {
+
+        // Find out which socket this job was running on
+        Core core = this.jobToCoreMap.remove(job);
+
+        // Error check we got a real socket
+        if (core == null) {
+            Sim.fatalError("Couldn't resolve which core this job belonged to");
+        }
+
+        core.removeJob(time, job, jobWaiting);
+
+        // Mark that the job is no longer busy
+        boolean found = this.busyCores.remove(core);
+
+        // Error check the socket was considered busy
+        if (!found) {
+            Sim.fatalError("Could take core off the busy list");
+        }
+
+        // Core is now available
+        this.availableCores.add(core);
+
+        if (this.busyCores.size() == 0 && !jobWaiting) {
+            if (this.powerPolicy == SocketPowerPolicy.SOCKET_PARKING) {
+                this.powerState
+                    = SocketPowerState.TRANSITIONG_TO_LOW_POWER_IDLE;
+                double enterParkTime
+                    = time + Constants.SOCKET_PARK_TRANSITION_TIME;
+                SocketEnteredParkEvent socketEnteredParkEvent
+                        = new SocketEnteredParkEvent(enterParkTime,
+                                                     this.experiment,
+                                                     this);
+                this.experiment.addEvent(socketEnteredParkEvent);
+                this.trasitionEvent = socketEnteredParkEvent;
+            }
+            // Otherwise the socket stays active
+        }
+    }
+
+    /**
+     * Gets the number of cores that have slots for jobs.
+     *
+     * @return the number of cores that are available for jobs
+     */
+    public int getRemainingCapacity() {
+        return this.availableCores.size() - this.transitionQueue.size();
+    }
+
+    /**
+     * Gets the number of jobs this socket can ever support.
+     *
+     * @return the total number of cores/jobs the socket can support.
+     */
+    public int getTotalCapacity() {
+        return this.nCores;
+    }
+
+    /**
+     * Gets the instant utilization of the socket (busy cores/ total cores).
+     *
+     * @return the instant utilization of the core
+     */
+    public double getInstantUtilization() {
+        return ((double) this.busyCores.size() + this.transitionQueue.size())
+                / this.nCores;
+    }
+
+    /**
+     * Gets an Vector of cores on this socket.
+     *
+     * @return a vector of the cores on the socket
+     */
+    public Vector<Core> getCores() {
+        Vector<Core> combined = new Vector<Core>();
+        combined.addAll(this.availableCores);
+        combined.addAll(this.busyCores);
+
+        return combined;
+    }
+
+    /**
+     * Gets the server the socket is on.
+     *
+     * @return the server the socket belongs to
+     */
+    public Server getServer() {
+        return this.server;
+    }
+
+    /**
+     * Get the number of jobs being serviced.
+     *
+     * @return The number of jobs being serviced
+     */
+    public int getJobsInService() {
+        return this.busyCores.size();
+    }
+
+    /**
+     * Set the power management policy of the cores in the socket.
+     *
+     * @param corePowerPolicy - the power management policy to use on the cores
+     */
+    public void setCorePolicy(final CorePowerPolicy corePowerPolicy) {
+        Vector<Core> cores = this.getCores();
+        Iterator<Core> iter = cores.iterator();
+        while (iter.hasNext()) {
+            Core core = iter.next();
+            core.setPowerPolicy(corePowerPolicy);
+        }
+    }
+
+    /**
+     * Set the power management policy of the socket.
+     *
+     * @param policy - the power management policy to set the socket to
+     */
+    public void setPowerPolicy(final SocketPowerPolicy policy) {
+        this.powerPolicy = policy;
+    }
+
+    /**
+     * Put the socket into park.
+     * @param time - the time the socket is put into park
+     */
+    public void enterPark(final double time) {
+        if (this.busyCores.size() != 0) {
+            Sim.fatalError("Socket tried to enter park when it shouldn't have");
+        }
+
+        this.powerState = SocketPowerState.LOW_POWER_IDLE;
+    }
+
+    /**
+     * Take the socket out of park.
+     *
+     * @param time - the time the socket comes out of park
+     */
+    public void exitPark(final double time) {
+        this.powerState = SocketPowerState.ACTIVE;
+        Iterator<Job> iter = this.transitionQueue.iterator();
+        while (iter.hasNext()) {
+            Job job = iter.next();
+            this.insertJob(time, job);
+        }
+        this.transitionQueue.clear();
+    }
+
+    /**
+     * Gets the number of jobs waiting for the socket to transition.
+     *
+     * @return the number of jobs waiting for the socket to transition
+     */
+    public int getNJobsWaitingForTransistion() {
+        return this.transitionQueue.size();
+    }
+
+    /**
+     * Pause processing at the socket.
+     *
+     * @param time - the time the socket processing is paused
+     */
+    public void pauseProcessing(final double time) {
+        Vector<Core> cores = this.getCores();
+        Iterator<Core> iter = cores.iterator();
+        while (iter.hasNext()) {
+            Core core = iter.next();
+            core.pauseProcessing(time);
+        }
+    }
+
+    /**
+     * Resume processing at the socket.
+     *
+     * @param time - the time the socket resumes processing
+     */
+    public void resumeProcessing(final double time) {
+        Vector<Core> cores = this.getCores();
+        Iterator<Core> iter = cores.iterator();
+        while (iter.hasNext()) {
+            Core core = iter.next();
+            core.resumeProcessing(time);
+        }
+    }
+
+    /**
+     * Set the socket's active power.
+     *
+     * @param socketActivePower - the power consumed by the socket while active
+     */
+    public void setSocketActivePower(final double socketActivePower) {
+        this.socketActiveIdlePower = socketActivePower;
+    }
+
+    /**
+     * Set the socket's power while parked.
+     *
+     * @param theSocketParkPower - the power of the socket while parked
+     */
+    public void setSocketParkPower(final double theSocketParkPower) {
+        this.socketParkPower = theSocketParkPower;
+    }
+
+    /**
+     * Set the idle power of the socket's cores (in watts).
+     *
+     * @param coreHaltPower - the idle power of the socket's cores (in watts)
+     */
+    public void setCoreIdlePower(final double coreHaltPower) {
+        Iterator<Core> iter = this.getCores().iterator();
+        while (iter.hasNext()) {
+            Core core = iter.next();
+            core.setIdlePower(coreHaltPower);
+        }
+    }
+
+    /**
+     * Set the park power of the socket's core.
+     *
+     * @param coreParkPower - the power of the socket's cores whil parked
+     */
+    public void setCoreParkPower(final double coreParkPower) {
+        Iterator<Core> iter = this.getCores().iterator();
+        while (iter.hasNext()) {
+            Core core = iter.next();
+            core.setParkPower(coreParkPower);
+        }
+    }
+
+    /**
+     * Sets the active power of the socket's cores (in watts).
+     *
+     * @param coreActivePower - the active power of the
+     * socket's cores (in watts)
+     */
+    public void setCoreActivePower(final double coreActivePower) {
+        Iterator<Core> iter = this.getCores().iterator();
+        while (iter.hasNext()) {
+            Core core = iter.next();
+            core.setActivePower(coreActivePower);
+        }
+    }
+
+    /**
+     * Sets the DVFS speed for all the socket's cores.
+     *
+     * @param time - the time at which the speed is set
+     * @param speed - the speed to set the cores to (relative to 1.0)
+     */
+    public void setDvfsSpeed(final double time, final double speed) {
+        Iterator<Core> iter = this.getCores().iterator();
+        while (iter.hasNext()) {
+            iter.next().setDvfsSpeed(time, speed);
+        }
+    }
+
+    /**
+     * Get the current power consumption of the socket (dynamic + leakage).
+     *
+     * @return the current power consumption of the socket
+     */
+    public double getPower() {
+        return this.getDynamicPower() + this.getIdlePower();
+    }
+
+    /**
+     * Get the current idle power of the socket and its cores.
+     *
+     * @return the current idle power of the socket and its cores
+     */
+    public double getIdlePower() {
+
+        double idlePower = 0.0d;
+        if (this.powerState == SocketPowerState.ACTIVE) {
+
+            Iterator<Core> coreIter = this.getCores().iterator();
+            while (coreIter.hasNext()) {
+                Core core = coreIter.next();
+                double corePower = core.getIdlePower();
+                idlePower += corePower;
+            }
+            idlePower += Constants.SOCKET_IDLE_POWER;
+
+        } else if (this.powerState == SocketPowerState.TRANSITIONG_TO_ACTIVE) {
+
+            idlePower = Constants.SOCKET_IDLE_POWER;
+
+        } else if (this.powerState
+                        == SocketPowerState.TRANSITIONG_TO_LOW_POWER_IDLE) {
+
+            idlePower = Constants.SOCKET_IDLE_POWER;
+
+        } else if (this.powerState == SocketPowerState.LOW_POWER_IDLE) {
+
+            idlePower = Constants.SOCKET_PARK_POWER;
+
+        }
+
+        return idlePower;
+    }
+
+    /**
+     * Get the current dynamic power consumption of the socket.
+     * Modeled as the sum of the core dynamic power.
+     * Uncore power is all leakage.
+     *
+     * @return the current dynamic power consumption of the socket
+     */
+    public double getDynamicPower() {
+
+        double dynamicPower = 0.0d;
+
+        Iterator<Core> coreIter = this.getCores().iterator();
+        while (coreIter.hasNext()) {
+            Core core = coreIter.next();
+            double corePower = core.getDynamicPower();
+            dynamicPower += corePower;
+        }
+
+        return dynamicPower;
+    }
+
+}

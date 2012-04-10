@@ -25,26 +25,52 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 package datacenter;
 
-import core.Event;
+import core.AbstractEvent;
 import core.Experiment;
 
-public class RecalculateCapsEvent extends Event {
+/**
+ * Represents a PowerCappingEnforcer recalculating caps for the servers
+ * it monitors and sends caps to.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
+public final class RecalculateCapsEvent extends AbstractEvent {
 
-	private PowerCappingEnforcer enforcer;
-	
-	public RecalculateCapsEvent(double time, Experiment experiment, PowerCappingEnforcer enforcer){
-		super(time, experiment);
-		this.enforcer = enforcer;
-	}//End RecalculateCapsEvent()
-	
-	@Override
-	public void process() {
-		this.enforcer.recalculateCaps(this.time);
-	}//End process()
+    /**
+     * The serialization id.
+     */
+    private static final long serialVersionUID = 1L;
 
-}//End class RecalculateCapsEvent
+    /**
+     * The PowerCappingEnforcer that is going to recalculate caps.
+     */
+    private PowerCappingEnforcer enforcer;
+
+    /**
+     * Creates a new RecalculateCapsEvent.
+     *
+     * @param time - the time the recalculation occurs
+     * @param experiment - the experiment the event occurs in
+     * @param anEnforcer - the enforcer to recalculate caps
+     */
+    public RecalculateCapsEvent(final double time,
+                                final Experiment experiment,
+                                final PowerCappingEnforcer anEnforcer) {
+        super(time, experiment);
+        this.enforcer = anEnforcer;
+    }
+
+    /**
+     * Has the PowerCappingEnforcer recalculate power caps for the servers.
+     */
+    @Override
+    public void process() {
+        this.enforcer.recalculateCaps(this.getTime());
+    }
+
+}

@@ -25,243 +25,307 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 package datacenter;
-
-import java.util.Iterator;
-import java.util.Vector;
 
 import generator.Generator;
 import core.Experiment;
 import core.Job;
 import core.Sim;
 
+/**
+ * A PowerNap server transitions to a low-power "nap" state when idle.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
 public class PowerNapServer extends Server {
 
-	protected double nap_transition_time;	// in milliseconds
-	private double nap_power;	// relative to 100
-	
-//	protected Vector<Job> nap_job_queue;
-	
-	public enum PowerNapState{ACTIVE, TRANSITIONING_TO_ACTIVE, TRANSITIONING_TO_NAP, NAP};
-	protected PowerNapState power_nap_state;
-	private PowerNapTransitionedToNapEvent transition_event;
-	private boolean transitioning_to_active;
-	private boolean transitioning_to_nap;
-	
-	public PowerNapServer(int sockets, int coresPerSocket, Experiment experiment, Generator arrivalGenerator, Generator serviceGenerator, double napTransitionTime, double napPower) {
-		super(sockets, coresPerSocket, experiment, arrivalGenerator, serviceGenerator);
-		
-		this.nap_transition_time = napTransitionTime;
-		this.nap_power = napPower;
-		this.power_nap_state = PowerNapState.NAP;
-		this.transitioning_to_active = false;
-		this.transitioning_to_nap = false;
-		this.pauseProcessing(0);
-	}//End PowerNapServer()
-	
-	
-	public boolean isNapping() {
-		if(this.power_nap_state == PowerNapState.NAP || this.power_nap_state == PowerNapState.TRANSITIONING_TO_NAP || this.transitioning_to_nap) {
-			return true;
-		} else {
-			return false;
-		}
-	}
-	
-	public void superDuberInsertJob(double time, Job job) {
-		Sim.debug(666, "PowerNapServer.superDuperInsertJob()");
-		super.insertJob(time, job);
-	}
+    /**
+     * The serialization id.
+     */
+    private static final long serialVersionUID = 1L;
 
-	
-	@Override
-	public void insertJob(double time, Job job) {
-		
-		Sim.debug(666, "PowerNapServer.insertJob()");
-		Sim.debug(666, "Jobs in service " + this.getJobsInService() + " jobs in queue" +this.getQueueLength() + " server paused: " + this.isPaused()+ " server napping: " + this.isPaused());
+    //TODO check this is in fact in seconds not milliseconds
+    /**
+     * The transition time in and out of nap (in seconds).
+     */
+    protected double napTransitionTime;
 
-		if( this.power_nap_state == PowerNapState.ACTIVE ) {
-			
-			Sim.debug(666, "Server is active so we're going to just insert");
-			super.insertJob(time, job);
-			
-		}else if( this.power_nap_state == PowerNapState.TRANSITIONING_TO_NAP ) {
-			
-			Sim.debug(666, "Server is transitioning to nap so we need to transition to active");
-			this.transistionToActive(time);
-			this.queue.add(job);
-			
-			//Job has entered the system
-			this.jobs_in_server_invariant++;		
+    /**
+     * The power of the server while in nap mode (in watts).
+     */
+    private double napPower;
 
-		}else if( this.power_nap_state == PowerNapState.TRANSITIONING_TO_ACTIVE ) {
-			
-			this.queue.add(job);
-			
-			//Job has entered the system
-			this.jobs_in_server_invariant++;
+    /**
+     * The power state of the PowerNap server.
+     */
+    public enum PowerNapState {
+        /** The PowerNap server is active. */
+        ACTIVE,
 
-		}else if( this.power_nap_state == PowerNapState.NAP ) {
-			Sim.debug(666, "Server was napping so we need to transitioning to active");
-			this.transistionToActive(time);
-			this.queue.add(job);
-			
-			//Job has entered the system
-			this.jobs_in_server_invariant++;
+        /** The PowerNap server is transitioning to active. */
+        TRANSITIONING_TO_ACTIVE,
 
-		} else {
-			Sim.fatalError("Uknown power state");
-		}//End if
-		
+        /**  The PowerNap server is transitioning to nap. */
+        TRANSITIONING_TO_NAP,
 
-	}//End insertJob()
-	
-	@Override
-	public int getJobsInSystem() {
-		
-		int jobsInSystem = this.getQueueLength() + this.getJobsInService();
-		
-		return jobsInSystem;
-		
-	}//End getJobsInSystem()
-	
-	
-	public double getNapTransitionTime() {
-		return this.nap_transition_time;
-	}//End getTransitionTime()
-	
-	public void transistionToActive(double time) {
-		
-		Sim.debug(666, "PowerNapServer.transistionToActive()");
+        /** The PowerNap server is napping. */
+        NAP
+    };
 
-		if(!this.isNapping()) { 
-			Sim.fatalError("Trying to transition to active when not napping");
-		}
-		
-		if(!this.isPaused()) { 
-			Sim.fatalError("Trying to transition to active when not paused");
-		}
-		
-		Sim.debug(666, "...time: " +time + " Server is transitioning to active");
-		
-		double extraDelay = 0;
-		if(this.transition_event != null){
-			double timeServerWouldHaveReachedNap=this.transition_event.getTime();
-			extraDelay += timeServerWouldHaveReachedNap - time;
-			this.experiment.cancelEvent( this.transition_event);
-			this.transitioning_to_nap = false;
-		}
-		this.transitioning_to_active = true;
+    /** The current power state of the PowerNap server. */
+    protected PowerNapState powerNapState;
 
-		this.power_nap_state = PowerNapState.TRANSITIONING_TO_ACTIVE;
-		double napTime = time + extraDelay +this.nap_transition_time ;
-		PowerNapTransitionedToActiveEvent napEvent = new PowerNapTransitionedToActiveEvent(napTime, this.experiment, this);
-		this.experiment.addEvent(napEvent);
-		Sim.debug(666, "...|...time " + time + " Inserted PowerNapTransitionedToActiveEvent");
-		
-	}
-	
-	public void transistionToNap(double time) {
-		Sim.debug(666, "PowerNapServer.transistionToNap()");
-		if(this.isNapping()) { 
-			Sim.fatalError("Trying to transition to nap when napping");
-		}
-		
-		if(this.isPaused()) { 
-			Sim.fatalError("Trying to transition to nap when paused");
-		}
-		
-		Sim.debug(666, "...|...time: " +time + " Server is transitioning to nap");
+    /** The transition event if the server is transitioning. */
+    private PowerNapTransitionedToNapEvent transitionEvent;
 
-		this.power_nap_state = PowerNapState.TRANSITIONING_TO_NAP;
-		this.transitioning_to_nap = true;
-		double napTime = time + this.nap_transition_time;
-		PowerNapTransitionedToNapEvent napEvent = new PowerNapTransitionedToNapEvent(napTime, this.experiment, this);
-		this.transition_event = napEvent;
-		this.experiment.addEvent(napEvent);
-		this.pauseProcessing(time);
-		Sim.debug(666, "...|...time " + time + " Inserted transistionToNap");
+    /** Whether the PowerNap server is transitioning to active. */
+    private boolean transitioningToActive;
 
-	}
-	
-	@Override
-	public void removeJob(double time, Job job) {
-		Sim.debug(666, "PowerNapServer.removeJob()");
-		super.removeJob(time, job);
-		
-		if(this.getJobsInService() == 0) {
-			this.transistionToNap(time);			
-		}//End if
-		
+    /** Whether the PowerNap server is transitioning to nap. */
+    private boolean transitioningToNap;
 
-	}//End removeJob()
+    /**
+     * Creates a new PowerNapServer.
+     *
+     * @param theNumberOfSockets - the number of sockets the server has
+     * @param coresPerSocket - the number of cores per sockets
+     * @param experiment - the experiment the server is part of
+     * @param arrivalGenerator - The interarrival generator for the server
+     * @param serviceGenerator - The service time generator for the server
+     * @param theNapTransitionTime - the transition time in
+     * and out of the the nap mode (in seconds)
+     * @param theNapPower - the power of the server while in nap mode (in watts)
+     */
+    public PowerNapServer(final int theNumberOfSockets,
+                          final int coresPerSocket,
+                          final Experiment experiment,
+                          final Generator arrivalGenerator,
+                          final Generator serviceGenerator,
+                          final double theNapTransitionTime,
+                          final double theNapPower) {
+        super(theNumberOfSockets, coresPerSocket, experiment, arrivalGenerator,
+                serviceGenerator);
 
-	public void setToActive(double time) {
-		
-		Sim.debug(666, "PowerNap.setToActive()");
-		Sim.debug(666, "...|...time: " +time + " Server became active");
+        this.napTransitionTime = theNapTransitionTime;
+        this.napPower = theNapPower;
+        this.powerNapState = PowerNapState.NAP;
+        this.transitioningToActive = false;
+        this.transitioningToNap = false;
+        this.pauseProcessing(0);
+    }
 
-		this.transitioning_to_active = false;	
-		
-		//Server is now fully in the  active mode
-		this.power_nap_state = PowerNapState.ACTIVE;
-		
-		//Start all the jobs possible and queue the ones that aren't
-		this.resumeProcessing(time);
-		
-	}//End setToActive()
-	
-	public boolean isTransitioningToActive() {
-		return transitioning_to_active;
-	}
-	
-	public boolean isTransitioningToNap() {
-		return transitioning_to_nap;
-	}
-	
-	public void setToNap(double time) {
-		Sim.debug(666, "PowerNap.setToNap()");
-		Sim.debug(666, "...|...time: " +time + " Server became nap");
-		//Server is now fully in the nap mode
-		this.transitioning_to_nap = false;
-		this.power_nap_state = PowerNapState.NAP;
-		this.transition_event=null;
+    /**
+     * Checks if the PowerNap server is napping.
+     *
+     * @return if the PowerNap server is napping
+     */
+    public boolean isNapping() {
+        return this.powerNapState == PowerNapState.NAP
+                || this.powerNapState == PowerNapState.TRANSITIONING_TO_NAP
+                || this.transitioningToNap;
+    }
 
-	}//End setTopNap()
-	
-	@Override
-	public double getPower() {
-		
-		double power = 0.0d;
+    /**
+     * Inserts the job into the server.
+     *
+     * @param time - the time the job is inserted
+     * @param job - the job to be inserted
+     */
+    @Override
+    public void insertJob(final double time, final Job job) {
+        if (this.powerNapState == PowerNapState.ACTIVE) {
 
-		if(this.power_nap_state == PowerNapState.ACTIVE) {
+            super.insertJob(time, job);
 
-			power = super.getPower();
-			Sim.debug(666,"state: active: "+power);			
+        } else if (this.powerNapState == PowerNapState.TRANSITIONING_TO_NAP) {
 
-		}else if(this.power_nap_state == PowerNapState.TRANSITIONING_TO_ACTIVE) {
-			power = super.getPower();
-			Sim.debug(666,"state: transitioning to active power: "+power);
+            this.transistionToActive(time);
+            this.queue.add(job);
 
+            // Job has entered the system
+            this.jobsInServerInvariant++;
 
-		} else if(this.power_nap_state == PowerNapState.TRANSITIONING_TO_NAP) {
-			power = super.getPower();
-			Sim.debug(666,"state: transitioning to nap power: "+power);
+        } else if (this.powerNapState
+                    == PowerNapState.TRANSITIONING_TO_ACTIVE) {
 
-		} else if (this.power_nap_state==PowerNapState.NAP) {
+            this.queue.add(job);
+            // Job has entered the system
+            this.jobsInServerInvariant++;
 
-			power = this.nap_power;
-			Sim.debug(666,"state: nap power : "+power);
+        } else if (this.powerNapState == PowerNapState.NAP) {
 
-		}//End if
-	
-		return power;
-		
-	}//End getPower()
-	
+            this.transistionToActive(time);
+            this.queue.add(job);
+            // Job has entered the system
+            this.jobsInServerInvariant++;
 
-	
-}//End class PowerNapServer
+        } else {
+
+            Sim.fatalError("Uknown power state");
+
+        }
+    }
+
+    /**
+     * Get the time for the PowerNap server to transition.
+     *
+     * @return the time for the PowerNap server to transition
+     */
+    public double getNapTransitionTime() {
+        return this.napTransitionTime;
+    }
+
+    /**
+     * Transitions the server to the active state.
+     *
+     * @param time - the time to start transitioning
+     */
+    public void transistionToActive(final double time) {
+        if (!this.isNapping()) {
+            Sim.fatalError("Trying to transition to active when not napping");
+        }
+
+        if (!this.isPaused()) {
+            Sim.fatalError("Trying to transition to active when not paused");
+        }
+
+        double extraDelay = 0;
+        if (this.transitionEvent != null) {
+            double timeServerWouldHaveReachedNap = this.transitionEvent
+                    .getTime();
+            extraDelay += timeServerWouldHaveReachedNap - time;
+            this.getExperiment().cancelEvent(this.transitionEvent);
+            this.transitioningToNap = false;
+        }
+        this.transitioningToActive = true;
+        this.powerNapState = PowerNapState.TRANSITIONING_TO_ACTIVE;
+        double napTime = time + extraDelay + this.napTransitionTime;
+        PowerNapTransitionedToActiveEvent napEvent
+            = new PowerNapTransitionedToActiveEvent(napTime,
+                                                    this.getExperiment(),
+                                                    this);
+        this.getExperiment().addEvent(napEvent);
+    }
+
+    /**
+     * Transition the server to the nap state.
+     *
+     * @param time - the time the server is transitioned
+     */
+    public void transistionToNap(final double time) {
+        // Make sure this transition is valid
+        if (this.isNapping()) {
+            Sim.fatalError("Trying to transition to nap when napping");
+        }
+        // Make sure this transition is valid
+        if (this.isPaused()) {
+            Sim.fatalError("Trying to transition to nap when paused");
+        }
+
+        this.powerNapState = PowerNapState.TRANSITIONING_TO_NAP;
+        this.transitioningToNap = true;
+        double napTime = time + this.napTransitionTime;
+        PowerNapTransitionedToNapEvent napEvent
+            = new PowerNapTransitionedToNapEvent(napTime,
+                                                 this.getExperiment(),
+                                                 this);
+        this.transitionEvent = napEvent;
+        this.getExperiment().addEvent(napEvent);
+        this.pauseProcessing(time);
+    }
+
+    /**
+     * Removes a job from the server.
+     *
+     * @param time
+     *            - the time the job is removed
+     * @param job
+     *            - the job to be removed
+     */
+    @Override
+    public void removeJob(final double time, final Job job) {
+        super.removeJob(time, job);
+        if (this.getJobsInService() == 0) {
+            this.transistionToNap(time);
+        }
+    }
+
+    /**
+     * Sets the server to active.
+     *
+     * @param time
+     *            - the time the server becomes active
+     */
+    public void setToActive(final double time) {
+        this.transitioningToActive = false;
+        // Server is now fully in the active mode
+        this.powerNapState = PowerNapState.ACTIVE;
+        // Start all the jobs possible and queue the ones that aren't
+        this.resumeProcessing(time);
+    }
+
+    /**
+     * Checks if the server is currently transitioning to the active state.
+     *
+     * @return if the server is currently transitioning to the active state
+     */
+    public boolean isTransitioningToActive() {
+        return transitioningToActive;
+    }
+
+    /**
+     * Checks if the server is currently transitioning to the nap state.
+     *
+     * @return if the server is currently transitioning to the nap state
+     */
+    public boolean isTransitioningToNap() {
+        return transitioningToNap;
+    }
+
+    /**
+     * Puts the server in the nap mode.
+     *
+     * @param time - the time the server is put in the nap mode.
+     */
+    public void setToNap(final double time) {
+        // Server is now fully in the nap mode
+        this.transitioningToNap = false;
+        this.powerNapState = PowerNapState.NAP;
+        this.transitionEvent = null;
+    }
+
+    /**
+     * Gets the instantaneous power of the PowerNap server.
+     *
+     * @return the instantaneous power of the PowerNap server
+     */
+    @Override
+    public double getPower() {
+        double power = 0.0d;
+
+        if (this.powerNapState == PowerNapState.ACTIVE) {
+
+            power = super.getPower();
+
+        } else if (this.powerNapState
+                    == PowerNapState.TRANSITIONING_TO_ACTIVE) {
+
+            power = super.getPower();
+
+        } else if (this.powerNapState == PowerNapState.TRANSITIONING_TO_NAP) {
+
+            power = super.getPower();
+
+        } else if (this.powerNapState == PowerNapState.NAP) {
+
+            power = this.napPower;
+
+        }
+
+        return power;
+    }
+
+}

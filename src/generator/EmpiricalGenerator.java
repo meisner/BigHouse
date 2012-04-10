@@ -25,60 +25,102 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 package generator;
 
-import java.util.Random;
+import math.EmpiricalDistribution;
 
-import math.Distribution;
-
-
+/**
+ * An EmpiricalGenerator generates random numbers drawn from an
+ * empirical distribution. It uses inverse transform sampling:
+ * http://en.wikipedia.org/wiki/Inverse_transform_sampling
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
 public class EmpiricalGenerator extends Generator {
 
-  private double scale;
-  private String name;
-//  private Random generator;
-  private Distribution cdf;
+    /** The serialization id. */
+    private static final long serialVersionUID = 1L;
 
-  public EmpiricalGenerator(MTRandom mtRandom,Distribution cdf){
+    /** The scaling factor to multiply generated numbers by. */
+    private double scale;
 
-	  this(mtRandom, cdf, "");
+    /** The name of the distribution. */
+    private String name;
 
+    /** The empirical distribution to draw from. */
+    private EmpiricalDistribution cdf;
+
+    /**
+     * Creates a new EmpiricalGenerator.
+     *
+     * @param mtRandom - the random number generator to
+     * get uniform random number from.
+     * @param aCdf - the empirical distribution to draw from
+     */
+    public EmpiricalGenerator(final MTRandom mtRandom,
+                              final EmpiricalDistribution aCdf) {
+        this(mtRandom, aCdf, "");
+    }
+
+    /**
+     * Creates a new EmpiricalGenerator.
+     *
+     * @param mtRandom - the random number generator to
+     * get uniform random number from.
+     * @param aCdf - the empirical distribution to draw from
+     * @param theName - the name of the distribution
+     */
+    public EmpiricalGenerator(final MTRandom mtRandom,
+                              final EmpiricalDistribution aCdf,
+                              final String theName) {
+        super(mtRandom);
+
+        this.cdf = aCdf;
+        this.scale = 1.0;
+        this.name = theName;
+    }
+
+  /**
+   * Creates a new EmpiricalGenerator.
+   *
+   * @param mtRandom - the random number generator
+   * @param aCdf - the distribution from which to draw random numbers
+   * @param theName - the name of the distribution
+   * @param theScale - a scaling factor to modulate the distribution by
+   * (random numbers are multiplied by this scaling factor)
+   */
+  public EmpiricalGenerator(final MTRandom mtRandom,
+                            final EmpiricalDistribution aCdf,
+                            final String theName,
+                            final double theScale) {
+    this(mtRandom, aCdf, theName);
+    this.scale = theScale;
   }
 
-  public EmpiricalGenerator(MTRandom mtRandom, Distribution cdf, String name){
-	  super(mtRandom);
-//	  this.generator = new MTRandom();
-	  this.cdf = cdf;
-	  this.scale = 1.0;
-	  this.name = name;
-
-  }
-
-  public EmpiricalGenerator(MTRandom mtRandom, Distribution cdf, String name, double scale){
-	  
-    this(mtRandom, cdf, name);
-    this.scale = scale;
-    
-  }
-
+  /**
+   * Generates the next value.
+   *
+   * @return the next value
+   */
   @Override
   public double next() {
-
     double rand = this.generator.nextDouble();
-    
     double nextVal = this.cdf.getQuantile(rand);
-//    System.out.println(" rand = " + rand+" generated " +nextVal);
+
     return this.scale * nextVal;
-    
   }
 
+  /**
+   * Gets the name of the generator.
+   *
+   * @return the name of the generator
+   */
   @Override
   public String getName() {
     return this.name;
   }
-
 
 }

@@ -25,13 +25,23 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 package datacenter;
 
+/**
+ * An interface for objects which consume power.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
 public interface Powerable {
 
-	public double getPower();
-	
-}//End interface Powerable
+    /**
+     * Get the current power draw of the object.
+     *
+     * @return the current power draw of the object
+     */
+    double getPower();
+
+}

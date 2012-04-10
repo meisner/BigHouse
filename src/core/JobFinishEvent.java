@@ -31,72 +31,123 @@
 
 package core;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-
 import stat.Statistic;
-import datacenter.Core;
 import datacenter.Server;
 
-public class JobFinishEvent extends JobEvent implements Constants{
-	
-	private double finishing_speed; //The speed at which the job finish time was calculated
-	private double finish_time_set;
-	private Server server;
-	
-	public JobFinishEvent(double time, Experiment experiment, Job job, Server server, double finishTimeSet, double finishSpeed){
-		super(time, experiment, job);
-		this.server = server;
-		job.setJobFinishEvent(this);
-		this.finishing_speed = finishSpeed;
-		this.finish_time_set = finishTimeSet;
-		//System.out.println("Created finish event at " + time);
-	}
-	
-	public double getFinishTimeSet() {
-		return this.finish_time_set;
-	}
+/**
+ * Represents a job finishing on a server.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
+public final class JobFinishEvent extends JobEvent {
 
-	public void setFinishSpeed(double finishSpeed){
-		this.finishing_speed = finishSpeed;
-	}
-	
-	public double getFinishSpeed(){
-		return this.finishing_speed;
-	}
-	
-	@Override
-	public void process() {
-		//System.out.println("Job finished at  " + time);
-		this.job.markFinish(this.time);	
+    /**
+     * The serialization id.
+     */
+    private static final long serialVersionUID = 1L;
 
-		this.server.removeJob(this.time, this.job);
+    /**
+     * The speed at which the job finish time was calculated.
+     */
+    private double finishingSpeed;
 
-		double sojournTime = this.job.getFinishTime() - this.job.getArrivalTime();
-		Statistic sojournStat = this.experiment.getStats().getStat(StatName.SOJOURN_TIME);
-		sojournStat.addSample(sojournTime);
+    // TODO (meisner@umich.edu) Figure out exactly how this works
+    /**
+     * ...
+     */
+    private double finishTimeSet;
 
-//		Sim.debug(DEBUG_VERBOSE, "Job " + this.job.getJobId() + " finish. SoujournTime " + sojournTime);
-//		Sim.debug(DEBUG_VERBOSE, "Job " + this.job.getJobId() + " finish: StartTime " + this.job.getStartTime());
-//		Sim.debug(DEBUG_VERBOSE, "Job " + this.job.getJobId() + " finish: ArrivalTime " + this.job.getArrivalTime());
+    /**
+     * The server on which the job finished.
+     */
+    private Server server;
 
-		
-		double waitTime = this.job.getStartTime() - this.job.getArrivalTime(); 
-		Statistic waitStat = this.experiment.getStats().getStat(StatName.WAIT_TIME);
-		waitStat.addSample(waitTime);
-//		Sim.debug(DEBUG_VERBOSE, "Job finish. waitTime " + waitTime);
-		
-		if(sojournTime < 0){
-			
-			System.out.println("Job " +this.job.getJobId()+" Finish time "+this.job.getFinishTime() + " arrival time " + this.job.getArrivalTime());
-			Sim.fatalError("JobFinishEvent.java: This should never happen sojournTime = " + sojournTime);
-		}
-		
-		if(waitTime < 0){
-			Sim.fatalError("JobFinishEvent.java: This should never happen waitTime = " + waitTime);
-		}
-		
-	}//End process()
+    // TODO (meisner@umich.edu) Figure out exactly how finishTimeSet works
+
+    /**
+     * Creates a new JobFinishEvent.
+     *
+     * @param time - the time the job finishes
+     * @param experiment - the experiment the event is in
+     * @param job - the finishing job
+     * @param aServer - the server the job finished on
+     * @param theFinishTimeSet - double check this
+     * @param theFinishSpeed - the normalized speed at which the job finishes
+     */
+    public JobFinishEvent(final double time,
+                          final Experiment experiment,
+                          final Job job,
+                          final Server aServer,
+                          final double theFinishTimeSet,
+                          final double theFinishSpeed) {
+        super(time, experiment, job);
+        this.server = aServer;
+        job.setJobFinishEvent(this);
+        this.finishTimeSet = theFinishTimeSet;
+        this.finishingSpeed = theFinishSpeed;
+    }
+
+    // TODO (meisner@umich.edu) Figure out exactly how this works
+    /**
+     * ...
+     * @return ...
+     */
+    public double getFinishTimeSet() {
+        return this.finishTimeSet;
+    }
+
+    /**
+     * Sets the normalized speed at which the job finishes.
+     * 1.0  is no change in speed. 2.0 is twice as fast etc...
+     * @param theFinishSpeed - the normalized speed at which the job finishes.
+     */
+    public void setFinishSpeed(final double theFinishSpeed) {
+        this.finishingSpeed = theFinishSpeed;
+    }
+
+    /**
+     * Get the speed at which the job finishes.
+     * @return the finish speed
+     */
+    public double getFinishSpeed() {
+        return this.finishingSpeed;
+    }
+
+    @Override
+    public void process() {
+        this.getJob().markFinish(this.getTime());
+
+        this.server.removeJob(this.getTime(), this.getJob());
+
+        double sojournTime = this.getJob().getFinishTime()
+                                - this.getJob().getArrivalTime();
+        Statistic sojournStat = this.getExperiment().getStats().getStat(
+                                    Constants.StatName.SOJOURN_TIME);
+        sojournStat.addSample(sojournTime);
 
 
-}//End class JobFinishEvent
+        double waitTime = this.getJob().getStartTime()
+                              - this.getJob().getArrivalTime();
+        Statistic waitStat = this.getExperiment().getStats().getStat(
+                                                Constants.StatName.WAIT_TIME);
+        waitStat.addSample(waitTime);
+
+        if (sojournTime < 0) {
+            System.out.println("Job " + this.getJob().getJobId()
+                               + " Finish time "
+                               + this.getJob().getFinishTime()
+                               + " arrival time "
+                               + this.getJob().getArrivalTime());
+            Sim.fatalError("JobFinishEvent.java:"
+                           + " This should never happen sojournTime = "
+                           + sojournTime);
+        }
+
+        if (waitTime < 0) {
+            Sim.fatalError("JobFinishEvent.java:"
+                           + " This should never happen waitTime = "
+                           + waitTime);
+        }
+    }
+
+}

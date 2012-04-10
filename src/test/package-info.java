@@ -27,24 +27,6 @@
  *
  * @author David Meisner (meisner@umich.edu)
  *
+ * Top level test package for all testing.
  */
-package test.stat;
-
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
-import org.junit.runners.Suite.SuiteClasses;
-
-/**
- * Tests all statistics-based test.
- *
- * @author David Meisner (meisner@umich.edu)
- */
-@RunWith(Suite.class)
-@SuiteClasses({ HistogramTest.class,
-                 SequenceTest.class,
-                 SimpleStatisticTest.class,
-                 StatisticTest.class })
-public class AllStatTests {
-
-
-}
+package test;

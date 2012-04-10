@@ -25,30 +25,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
+ * Package for all math-related classes.
  */
-
-package core;
-
-import datacenter.Core;
-import datacenter.MCPowerNapServer;
-import datacenter.Socket;
-
-public class MCPowerNapJobTimeoutEvent extends Event {
-
-	private MCPowerNapServer mcpowernap_server;
-	private Job job;
-	
-	public MCPowerNapJobTimeoutEvent(double time, Experiment experiment, Job job, MCPowerNapServer mcpowernapServer) {
-		super(time, experiment);
-		this.mcpowernap_server = mcpowernapServer;
-		this.job = job;
-	}//End SocketExitedParkEvent()
-
-	@Override
-	public void process() {
-		this.mcpowernap_server.handleJobTimeout(time, job, this);
-	}//End process()
-
-}//End SocketExitedParkEvent()
+package math;

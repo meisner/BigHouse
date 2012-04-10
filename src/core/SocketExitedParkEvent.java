@@ -30,21 +30,44 @@
  */
 package core;
 
-import datacenter.Core;
 import datacenter.Socket;
 
-public class SocketExitedParkEvent extends Event {
+/**
+ * Event representing a CPU socket exiting park.
+ *
+ * @author meisner@umich.edu
+ */
+public final class SocketExitedParkEvent extends AbstractEvent {
 
-	private Socket socket;
-	
-	public SocketExitedParkEvent(double time, Experiment experiment, Socket socket) {
-		super(time, experiment);
-		this.socket = socket;
-	}//End SocketExitedParkEvent()
+    /**
+     * The serialization id.
+     */
+    private static final long serialVersionUID = 1L;
 
-	@Override
-	public void process() {
-		this.socket.exitPark(this.time);
-	}//End process()
+    /**
+     * The socket which will be parked.
+     */
+    private Socket socket;
 
-}//End SocketExitedParkEvent()
+    /**
+     * Creates a new SocketExitedParkEvent.
+     * @param time - The time the socket exits park
+     * @param experiment - The experiment the event takes place in
+     * @param theSocket - The socket being taken out of park
+     */
+    public SocketExitedParkEvent(final double time,
+                                 final Experiment experiment,
+                                 final Socket theSocket) {
+        super(time, experiment);
+        this.socket = theSocket;
+    }
+
+    /**
+     * Takes the socket out of park.
+     */
+    @Override
+    public void process() {
+        this.socket.exitPark(this.getTime());
+    }
+
+}

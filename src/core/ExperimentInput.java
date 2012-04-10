@@ -32,42 +32,45 @@
 package core;
 
 import java.io.Serializable;
-import java.util.HashMap;
-
 import datacenter.DataCenter;
 
-/** ExperimentInput contains datacenter used in the experiment */
-public class ExperimentInput implements Serializable{
-	
-	private DataCenter data_center;
-	private HashMap<String, String> input_params;
-	
-	public ExperimentInput(){			
-		this.input_params = new HashMap<String, String>();
-	}
-	
-	public void setParamValue(String name, double value){
-		this.input_params.put(name, Double.toString(value));
-	}
-	
-	public void setParamValue(String name, int value){
-		this.input_params.put(name, Integer.toString(value));
-	}
-	
-	public String getParamValue(String name){
-		String paramValue = this.input_params.get(name);
-		if(paramValue == null){
-			paramValue = "";
-		}
-		return paramValue;
-	}
+/**
+ * ExperimentInput contains datacenter used in the experiment (and all the
+ * components in the datacenter e.g., servers).
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
+public final class ExperimentInput implements Serializable {
 
-	public void addDataCenter(DataCenter dataCenter){
-		this.data_center = dataCenter;
-	}
-	
-	public DataCenter getDataCenter(){
-		return this.data_center;
-	}
-	
-}//End class ExperimentInput
+    /**
+     * The serialization id.
+     */
+    private static final long serialVersionUID = 1L;
+    /**
+     * The datacenter modeled in the simulation.
+     */
+    private DataCenter datacenter;
+
+    /**
+     * Creates a new ExperimentInput.
+     */
+    public ExperimentInput() {
+    }
+
+    /**
+     * Sets the datacenter for the input.
+     * @param dataCenter the datacenter
+     */
+    public void setDataCenter(final DataCenter dataCenter) {
+        this.datacenter = dataCenter;
+    }
+
+    /**
+     * Gets the input datacenter. Can be null if not set.
+     * @return the datacenter
+     */
+    public DataCenter getDataCenter() {
+        return this.datacenter;
+    }
+
+}

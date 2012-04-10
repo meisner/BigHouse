@@ -30,20 +30,44 @@
  */
 package core;
 
-import datacenter.Core;
 import datacenter.Socket;
 
-public class SocketEnteredParkEvent extends Event {
+/**
+ * An event representing a CPU socket entering park.
+ *
+ * @author meisner@umich.edu
+ */
+public final class SocketEnteredParkEvent extends AbstractEvent {
 
-	private Socket socket;
-	public SocketEnteredParkEvent(double time, Experiment experiment, Socket socket) {
-		super(time, experiment);
-		this.socket = socket;
-	}//End CoreEnteredParkEvent()
+    /**
+     * The serialization id.
+     */
+    private static final long serialVersionUID = 1L;
 
-	@Override
-	public void process() {
-		this.socket.enterPark(this.time);
-	}//End process()
+    /**
+     * The socket which enters park.
+     */
+    private Socket socket;
 
-}//CoreEnteredParkEvent
+    /**
+     * Creates a new SocketEnteredParkEvent.
+     * @param time - The time the socket enters park
+     * @param experiment - The experiment the event takes place in
+     * @param theSocket - The socket being parked.
+     */
+    public SocketEnteredParkEvent(final double time,
+                                  final Experiment experiment,
+                                  final Socket theSocket) {
+        super(time, experiment);
+        this.socket = theSocket;
+    }
+
+    /**
+     * Puts the socket in park.
+     */
+    @Override
+    public void process() {
+        this.socket.enterPark(this.time);
+    }
+
+}

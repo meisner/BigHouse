@@ -25,7 +25,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 package datacenter;
@@ -40,73 +40,116 @@ import core.Experiment;
 import core.Sim;
 import core.Constants.StatName;
 
-public class PowerCappingEnforcer implements Serializable{
+/**
+ * Decides and assigns power caps for a set of servers.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
+public final class PowerCappingEnforcer implements Serializable {
 
-	private Vector<Server> servers;
-	
-	/** The total power cap for the data center */
-	private double global_cap;
-	/** The data center's maximum power draw (i.e. all servers at 100%) */
-	private double max_power;
-	/** The data center's minimum power draw (i.e. all servers at 0%) */
-	private double min_power;
-	/** The time period at which to recalculate server budgets */
-	private double cap_period;
-	private Experiment experiment;
-	
-	public PowerCappingEnforcer(Experiment experiment, double capPeriod, double globalCap, double maxPower, double minPower) {
-		
-		this.servers = new Vector<Server>();
-		this.experiment = experiment;
-		this.cap_period = capPeriod;
-		this.global_cap = globalCap;
-		this.min_power = minPower;
-		this.max_power = maxPower;
-		
-		this.experiment.addEvent(new RecalculateCapsEvent(this.cap_period, this.experiment, this));
+    /**
+     * The serialization id.
+     */
+    private static final long serialVersionUID = 1L;
 
-		
-	}//End PowerCappingEnforcer()
-	
-	public void addServer(Server server) {
-		this.servers.add(server);
-	}//End addServer()
-	
-	public void recalculateCaps(double time) {
-		
-		double totalPower = 0.0d;
-		double totalUtil = 0.0d;
-		Iterator<Server> iter = this.servers.iterator();
-		while(iter.hasNext()){
-			Server server = iter.next();
-			totalPower += server.getPower();
-			totalUtil += server.getInstantUtilization();
-		}//End while
-		
-		double overLimit = totalPower - this.global_cap;
-		
-		double fungiblePower = this.global_cap  - this.min_power;		
-		double powerRate = fungiblePower/totalUtil;
-		if(totalUtil == 0){
-			powerRate = 1.0;
-		}
-		
-		iter = this.servers.iterator();
-		SimpleStatistic serverCapStat = new SimpleStatistic();
-		while(iter.hasNext()){
-			Server server = iter.next();
-			double allocatedPower = powerRate * server.getInstantUtilization() + server.getIdlePower();	
-			double idealPower = server.getPower();
-			if(Double.isNaN(allocatedPower)){
-				Sim.fatalError("NaN!? powerRate " + powerRate + " total util "+totalUtil);
-			}
-			serverCapStat.addSample(Math.max(idealPower - allocatedPower, 0));			
-			server.assignPowerBudget(time, allocatedPower);
-		}//End while
-		this.experiment.getStats().getStat(StatName.SERVER_LEVEL_CAP).addSample(Math.max(serverCapStat.getAverage(), 0));
-		this.experiment.getStats().getStat(StatName.TOTAL_CAPPING).addSample(serverCapStat.getTotal());
-		this.experiment.addEvent(new RecalculateCapsEvent(time + this.cap_period, this.experiment, this));
-		
-	}//End recalculateCaps()
-	
-}//End class PowerCappingEnforcer
+    /**
+     * The servers that are assigned caps by the enforcer. */
+    private Vector<Server> servers;
+
+    /** The total power cap for the data center. */
+    private double globalCap;
+
+    /** The data center's maximum power draw (i.e. all servers at 100%) */
+    private double maxPower;
+
+    /** The data center's minimum power draw (i.e. all servers at 0%) */
+    private double minPower;
+
+    /** The time period at which to recalculate server budgets. */
+    private double capPeriod;
+
+    /** the experiment the enforcer is part of. */
+    private Experiment experiment;
+
+    /**
+     * Creates a new PowerCappingEnforcer.
+     *
+     * @param anExperiment - the experiment the enforcer is part of
+     * @param theCapPeriod - the period (in seconds) at which
+     * caps are recalculated
+     * @param theGlobalCap - the max power cap across all servers
+     * @param theMaxPower - the minimum possible power draw across all servers
+     * @param theMinPower - the maximum possible power draw across all servers
+     */
+    public PowerCappingEnforcer(final Experiment anExperiment,
+                                final double theCapPeriod,
+                                final double theGlobalCap,
+                                final double theMaxPower,
+                                final double theMinPower) {
+        this.servers = new Vector<Server>();
+        this.experiment = anExperiment;
+        this.capPeriod = theCapPeriod;
+        this.globalCap = theGlobalCap;
+        this.minPower = theMinPower;
+        this.maxPower = theMaxPower;
+        this.experiment.addEvent(
+                new RecalculateCapsEvent(
+                        this.capPeriod,
+                        this.experiment,
+                        this));
+    }
+
+    /**
+     * Adds a server to this enforcer.
+     *
+     * @param server - the server to add to the enforcer
+     */
+    public void addServer(final Server server) {
+        this.servers.add(server);
+    }
+
+    /**
+     * Recalculates power caps for all servers.
+     *
+     * @param time - the time at which the recalculation takes place
+     */
+    public void recalculateCaps(final double time) {
+        double totalPower = 0.0d;
+        double totalUtil = 0.0d;
+        Iterator<Server> iter = this.servers.iterator();
+        while (iter.hasNext()) {
+            Server server = iter.next();
+            totalPower += server.getPower();
+            totalUtil += server.getInstantUtilization();
+        }
+
+        double overLimit = totalPower - this.globalCap;
+        double fungiblePower = this.globalCap - this.minPower;
+        double powerRate = fungiblePower / totalUtil;
+        if (totalUtil == 0) {
+            powerRate = 1.0;
+        }
+
+        iter = this.servers.iterator();
+        SimpleStatistic serverCapStat = new SimpleStatistic();
+        while (iter.hasNext()) {
+            Server server = iter.next();
+            double allocatedPower = powerRate * server.getInstantUtilization()
+                    + server.getIdlePower();
+            double idealPower = server.getPower();
+            if (Double.isNaN(allocatedPower)) {
+                Sim.fatalError("NaN!? powerRate " + powerRate + " total util "
+                        + totalUtil);
+            }
+            serverCapStat.addSample(Math.max(idealPower - allocatedPower, 0));
+            server.assignPowerBudget(time, allocatedPower);
+        }
+        this.experiment.getStats().getStat(StatName.SERVER_LEVEL_CAP)
+                .addSample(Math.max(serverCapStat.getAverage(), 0));
+        this.experiment.getStats().getStat(StatName.TOTAL_CAPPING)
+                .addSample(serverCapStat.getTotalAccumulation());
+        this.experiment.addEvent(new RecalculateCapsEvent(time
+                + this.capPeriod, this.experiment, this));
+    }
+
+}

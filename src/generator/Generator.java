@@ -25,22 +25,49 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 package generator;
 
 import java.io.Serializable;
 
-abstract public class Generator implements Serializable{
+/**
+ * A Generator creates sequences of number based on distributions
+ * or other rules.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
+public abstract class Generator implements Serializable {
 
-	protected MTRandom generator;
-	
-	public Generator(MTRandom generator){
-		this.generator = generator;
-	}
-	
-	abstract public String getName();
-	
-	abstract public double next();
+    /**
+     * The serialization id.
+     */
+    private static final long serialVersionUID = 1L;
+
+    /** The random number generator to feed this generator. */
+    protected MTRandom generator;
+
+    /**
+     * Creates a new Generator.
+     *
+     * @param aGenerator - the random number generator to feed this generator.
+     */
+    public Generator(final MTRandom aGenerator) {
+        this.generator = aGenerator;
+    }
+
+    /**
+     * Get the name of the generator.
+     *
+     * @return the name of the generator
+     */
+    public abstract String getName();
+
+    /**
+     * Generates the next value.
+     *
+     * @return the next values
+     */
+    public abstract double next();
 }

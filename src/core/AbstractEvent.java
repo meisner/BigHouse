@@ -25,58 +25,73 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
-package generator;
+
+package core;
+
+import java.io.Serializable;
 
 /**
- * Creates random numbers from an exponential distribution.
+ * An Abstract implementation of the Event interface.
+ * Provides basic time and experiment methods.
  *
  * @author David Meisner (meisner@umich.edu)
  */
-public class ExponentialGenerator extends Generator {
+public abstract class AbstractEvent
+       implements Event, Comparable<Event>, Serializable {
 
-    /** The serialization id. */
+    /**
+     * Serialization id.
+     */
     private static final long serialVersionUID = 1L;
 
-    /** The exponential distribution's lambda parameter. */
-    private double lambda;
+    /** The time the event takes place. */
+    protected double time;
+
+    /** The experiment the even is associated with. */
+    private Experiment experiment;
 
     /**
-     * Creates a new ExponentialGenerator.
-     *
-     * @param mtRandom - the random number generator to
-     * get uniform random number from.
-     * @param theLambda - the exponential distribution's lambda parameter
+     * A constructor for subclasses to use.
+     * @param theTime - The time the event occurs at
+     * @param anExperiment - The experiment the event happens in
      */
-    public ExponentialGenerator(final MTRandom mtRandom,
-                                final double theLambda) {
-        super(mtRandom);
-        this.lambda = theLambda;
+    public AbstractEvent(final double theTime,
+                         final Experiment anExperiment) {
+        this.time = theTime;
+        this.experiment = anExperiment;
     }
 
     /**
-     * Generates the next value.
+     * Get the time the event occurs.
      *
-     * @return the next value
+     * @return the time the event occurs
      */
-    public double next() {
-        double random = this.generator.nextDouble();
-        double value = -Math.log(random) / this.lambda;
-        assert (value != Float.NaN);
-
-        return value;
+    public final double getTime() {
+        return this.time;
     }
 
     /**
-     * Gets the name of the generator.
-     *
-     * @return the name of the generator
+     * Get the experiment the event happens in.
+     * @return the experiment the event happens in
      */
-    @Override
-    public String getName() {
-        return "Exponential Generator param " + this.lambda;
+    public final Experiment getExperiment() {
+        return this.experiment;
+    }
+
+    /**
+     * Checks if an event takes place before or after this one.
+     * @param otherEvent - the event to compare to this one
+     * @return the value of
+     * {@link java.lang.Double#compareTo(Double anotherDouble)}
+     * comparing the times of the two events
+     */
+    public final int compareTo(final Event otherEvent) {
+        Double thisTime = this.time;
+        Double otherTime = new Double(otherEvent.getTime());
+        return thisTime.compareTo(otherTime);
     }
 
 }

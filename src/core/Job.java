@@ -31,157 +31,283 @@
 
 package core;
 
-public class Job implements Constants{
-	
-	/**
-	 * When the job arrived in the system
-	 * This variable should be set only once
-	 */
-	private double arrival_time;
-	/** 
-	 * When the job actually started (i.e. after queuing delays)
-	 * This variable should be set only once
-	 */
-	private double start_time;
-	/** 
-	 * When the job completes
-	 * This variable should be set only once
-	 */
-	private double finish_time;
+/**
+ * A job is the basic unit of work that servers process.
+ * The amount of "work" they represent is quantified in seconds.
+ * For example, if a job is 2 seconds big. It will complete in
+ * 2 seconds from starting, given that nothing interrupts it.
+ * This may be modulated by many things (e.g., slowing the CPU).
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
+public class Job {
 
-	/** Every job has a unique monotonically increasing id */
-	private long job_id;
-	
-	/** The "length" of the job. Divide by server rate to get the tim to completion */
-	private double job_size;
-	
-	/** If the job is suspended, this will give the amount that has been completed */
-	private double amount_completed;
-	private double amount_delayed;
-	static long current_id;
-	private boolean at_limit;
-	private JobFinishEvent job_finish_event;
-	private double last_resume_time;
-	
-	public Job(double jobSize){
+    /**
+     * When the job arrived in the system This variable should be set only once.
+     */
+    private double arrivalTime;
 
-		this.amount_completed = 0.0;
-		this.amount_delayed = 0.0;
-		this.job_size = jobSize;
-				
-		this.job_id = assignId();
-		this.at_limit = false;
-		this.job_finish_event = null;
-		this.last_resume_time = 0.0;
-		
-	}
-	
-	public void setAtLimit(boolean atLimit){
-		this.at_limit = atLimit;
-	}
-	
-	public boolean getAtLimit(){
-		return this.at_limit;
-	}
-	
-	public double getAmountDelayed(){
-		return this.amount_delayed;
-	}
-	
-	public void setAmountDelayed(double amount){
-		this.amount_delayed = amount;
-	}
-	
-	public void setAmountCompleted(double completed){
-		this.amount_completed = completed;
-	}
-	
-	public double getAmountCompleted(){
-		return this.amount_completed;
-	}
-	
-	private long assignId(){
-		long toReturn = Job.current_id;
-		Job.current_id++;
-		
-		return toReturn;	
-	}
-	
-	 public long getJobId(){
-		 return this.job_id;
-	 }
-	
-	public void markArrival(double time){
-		if (this.arrival_time > 0) {
-			Sim.fatalError("Job arrival marked twice!");
-		}
-		this.arrival_time = time;
-	}
-	
-	public void markStart(double time){
-		if (this.start_time > 0) {
-			Sim.fatalError("Job start marked twice!");
-		}
-		this.start_time = time;
-	}
-	
-	public void markFinish(double time){
-		if (this.finish_time > 0) {
-			Sim.fatalError("Job " + this.getJobId() + " finsih marked twice!");
-		}
-		this.finish_time = time;
-	}
-	
-	public double getArrivalTime(){
-		return this.arrival_time;
-	}
-	
-	public double getStartTime(){
-		return this.start_time;
-	}
-	
-	public double getFinishTime(){
-		return this.finish_time;
-	}
+    /**
+     * When the job actually started (i.e. after queuing delays).
+     * This variable should be set only once.
+     */
+    private double startTime;
 
-	public double getSize() {
-		return this.job_size;
-	}
-	
-	@Override
-	public boolean equals(Object obj ){
-		
-		boolean objectEqual = super.equals(obj);
-		if(!objectEqual){
-			return false;
-		}
-		
-		//TODO this may be exessive
-		boolean idEqual = ((Job)obj).getJobId() == this.job_id;
-		
-		if(!idEqual){
-			return false;
-		}
-		
-		return true;
-		
-	}
+    /**
+     * When the job completes This variable should be set only once.
+     */
+    private double finishTime;
 
-	public void setJobFinishEvent(JobFinishEvent jobFinishEvent) {
-		Sim.debug(666, "job "+this.getJobId() + " finish even set");
-		this.job_finish_event = jobFinishEvent;
-	}
-	
-	public JobFinishEvent getJobFinishEvent(){
-		return this.job_finish_event;
-	}
-	
-	public void setLastResumeTime(double time) {
-		this.last_resume_time = time;
-	}
-	
-	public double getLastResumeTime(){
-		return this.last_resume_time;
-	}
+    /**
+     * Every job has a unique monotonically increasing id.
+     */
+    private long jobId;
 
-}//End class Job
+    /**
+     * The "length" of the job.
+     * Divide by server rate to get the time to completion.
+     */
+    private double jobSize;
+
+    /**
+     * If the job is suspended, this will give the amount that has been
+     * completed.
+     */
+    private double amountCompleted;
+
+    /**
+     * Commulatively tracks how many seconds this job has been delayed.
+     */
+    private double amountDelayed;
+
+    /**
+     * A static incrementing variable for creating job IDs.
+     */
+    private static long currentId;
+
+//    /**
+//     *
+//     */
+//    private boolean atLimit;
+
+    /**
+     * The event that will occur when the job finishes.
+     */
+    private JobFinishEvent jobFinishEvent;
+
+    /**
+     * The last time this job was resumed.
+     * Useful when jobs are paused.
+     */
+    private double lastResumeTime;
+
+    /**
+     * Constructs a new job.
+     * @param theJobSize - The size of the job in seconds.
+     */
+    public Job(final double theJobSize) {
+        this.amountCompleted = 0.0;
+        this.amountDelayed = 0.0;
+        this.jobSize = theJobSize;
+        this.jobId = assignId();
+//        this.atLimit = false;
+        this.jobFinishEvent = null;
+        this.lastResumeTime = 0.0;
+    }
+
+//    public void setAtLimit(boolean atLimit) {
+//        this.atLimit = atLimit;
+//    }
+//
+//    public boolean getAtLimit() {
+//        return this.atLimit;
+//    }
+
+    /**
+     * Gets the amount (in seconds) the job has been delayed.
+     * @return the amount (in seconds) the job has been delayed.
+     */
+    public final double getAmountDelayed() {
+        return this.amountDelayed;
+    }
+
+    /**
+     * Set the amount the job has been delayed (in seconds).
+     * @param amount - how much the job has been delayed (in seconds).
+     */
+    public final void setAmountDelayed(final double amount) {
+        this.amountDelayed = amount;
+    }
+
+    /**
+     * Sets how much of the job has been completed (in seconds).
+     * @param completed - how much of the job has been completed (in seconds).
+     */
+    public final void setAmountCompleted(final double completed) {
+        this.amountCompleted = completed;
+    }
+
+    /**
+     * Gets how much of the job has been completed (in seconds).
+     * @return how much of the job has been completed (in seconds).
+     */
+    public final double getAmountCompleted() {
+        return this.amountCompleted;
+    }
+
+    /**
+     * Assigns an id to this job.
+     * Increments the current id for future jobs.
+     * @return the id assigned to the calling job
+     */
+    private long assignId() {
+        long toReturn = Job.currentId;
+        Job.currentId++;
+        return toReturn;
+    }
+
+    /**
+     * Gets the job id of the job.
+     * @return the job's job id
+     */
+    public final long getJobId() {
+        return this.jobId;
+    }
+
+    /**
+     * Marks the arrival time of the job.
+     * Should only ever need to be called once and the simulation
+     * will fail if this is called twice or more on a given job.
+     * @param time - the time the job arrives
+     */
+    public final void markArrival(final double time) {
+        if (this.arrivalTime > 0) {
+            Sim.fatalError("Job arrival marked twice!");
+        }
+        this.arrivalTime = time;
+    }
+
+    /**
+     * Mark the start time of the job.
+     * Should only ever need to be called once and the simulation
+     * will fail if this is called twice or more on a given job.
+     * @param time - the start time of the job
+     */
+    public final void markStart(final double time) {
+        if (this.startTime > 0) {
+            Sim.fatalError("Job start marked twice!");
+        }
+        this.startTime = time;
+    }
+
+    /**
+     * Marks the time the job finished.
+     * Should only ever need to be called once and the simulation
+     * will fail if this is called twice or more on a given job.
+     * @param time - the finish time of the job
+     */
+    public final void markFinish(final double time) {
+        if (this.finishTime > 0) {
+            Sim.fatalError("Job " + this.getJobId() + " finsih marked twice!");
+        }
+        this.finishTime = time;
+    }
+
+    /**
+     * Gets the time the job arrived at its server.
+     * @return the arrival time of the job at its server
+     */
+    public final double getArrivalTime() {
+        return this.arrivalTime;
+    }
+
+    /**
+     * Gets the time at which the job started.
+     * @return the start time of the job
+     */
+    public final double getStartTime() {
+        return this.startTime;
+    }
+
+    /**
+     * Gets the time at which the job finished.
+     * @return the finish time of the job
+     */
+    public final double getFinishTime() {
+        return this.finishTime;
+    }
+
+    /**
+     * Gets the size of the job (in seconds).
+     * @return the size of the job (in seconds)
+     */
+    public final double getSize() {
+        return this.jobSize;
+    }
+
+    /**
+     * Checks if another job is equal to this one.
+     * @param obj - the object that is compared to this one.
+     * @return true if the job is equal to this one.
+     */
+    @Override
+    public final boolean equals(final Object obj) {
+        boolean objectEqual = super.equals(obj);
+        if (!objectEqual) {
+            return false;
+        }
+
+        // TODO (meisner@umich.edu) this may be exessive
+        boolean idEqual = ((Job) obj).getJobId() == this.jobId;
+
+        if (!idEqual) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Function to hash the object by.
+     * @return the hash code of the object
+     */
+    @Override
+    public final int hashCode() {
+        return (int) this.jobId;
+    }
+
+    /**
+     * Set the even that finishes the job.
+     * @param aJobFinishEvent - The even that finishes the job.
+     */
+    public final void setJobFinishEvent(final JobFinishEvent aJobFinishEvent) {
+        this.jobFinishEvent = aJobFinishEvent;
+    }
+
+    /**
+     * Gets the even representing when the job finishes.
+     * May be null initially if it hasn't been set yet.
+     * @return the job finish event.
+     */
+    public final JobFinishEvent getJobFinishEvent() {
+        return this.jobFinishEvent;
+    }
+
+    /**
+     * Sets the last time the job was resumed.
+     * (Set this when the job is resumed)
+     * @param time - the time the job is resumed.
+     */
+    public final void setLastResumeTime(final double time) {
+        this.lastResumeTime = time;
+    }
+
+    /**
+     * Gets that last time job was resumed.
+     * @return the last resume time
+     */
+    public final double getLastResumeTime() {
+        return this.lastResumeTime;
+    }
+
+}

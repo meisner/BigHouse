@@ -34,36 +34,71 @@ package core;
 import java.io.Serializable;
 import java.util.PriorityQueue;
 
-public class EventQueue implements Serializable{
+/**
+ * The EvenQueue manages events in the discrete event simulation.
+ * The events are ordered by when they occur in time, so the
+ * head of the queue represents the next event to occur.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
+public final class EventQueue implements Serializable {
 
-	private static final long serialVersionUID = 1L;
-	
-	public PriorityQueue<Event> queue;
+    /**
+     * The serialization id.
+     */
+    private static final long serialVersionUID = 1L;
 
-	public EventQueue(){
-		this.queue = new PriorityQueue<Event>();
-	}
+    /**
+     * The queue of events. Events are time ordered in a priority queue.
+     */
+    private PriorityQueue<Event> queue;
 
-	public Event nextEvent(){
-		return this.queue.poll();
-	}
+    /**
+     * Creates a new EventQueue.
+     */
+    public EventQueue() {
+        this.queue = new PriorityQueue<Event>();
+    }
 
-	public void addEvent(Event event){
-		this.queue.add(event);
-	}
+    /**
+     * Get and remove the next event from the queue.
+     * @return the next event
+     */
+    public Event nextEvent() {
+        return this.queue.poll();
+    }
 
-	/** Take an event out of the event queue */
-	public void cancelEvent(Event event) {
-		boolean removeWorked = this.queue.remove(event);
-		// Make sure the event was actually removed
-		if(!removeWorked || this.queue.contains(event)){
-			//TODO - we have a loop where a Timeout event will try to remove itself while it is in process, so cancel will fail
-			Sim.fatalError("Tried to remove an event and it failed: " + event.getClass());
-		}
-	}
+    /**
+     * Add an event to the event queue.
+     * This event will now happen sometime in the future.
+     * @param event - the event to add
+     */
+    public void addEvent(final Event event) {
+        this.queue.add(event);
+    }
 
-	public int size() {
-		return this.queue.size();
-	}
+    /**
+     * Remove an event from the event queue.
+     * @param event - the event to remove
+     */
+    public void cancelEvent(final Event event) {
+        boolean removeWorked = this.queue.remove(event);
+        // Make sure the event was actually removed
+        if (!removeWorked || this.queue.contains(event)) {
+            // TODO - we have a loop where a Timeout event will try
+            // to remove itself while it is in process,
+            // so cancel will fail
+            Sim.fatalError("Tried to remove an event" + "and it failed: "
+                    + event.getClass());
+        }
+    }
 
-}//End class EventQueue
+    /**
+     * Get the size of the event queue.
+     * @return the size of the event queue
+     */
+    public int size() {
+        return this.queue.size();
+    }
+
+}

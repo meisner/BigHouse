@@ -31,38 +31,41 @@
 
 package core;
 
-import java.io.Serializable;
+/**
+ * An Event is the core class around which the
+ * discrete-event simulation is run. All state change
+ * should happen by processing these events.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
+public interface Event {
 
-abstract public class Event implements Comparable<Event>, Serializable{
+    /**
+     * Get the time of the event.
+     * @return the time the event occurs
+     */
+    double getTime();
 
-	private static final long serialVersionUID = 1L;
-	
-	/** The time the event takes place */
-	protected double time; 
-	
-	/** The experiment the even is associated with */
-	protected Experiment experiment; 
-	
-	public Event(double time, Experiment experiment){
-		this.time = time;
-		this.experiment = experiment;
-	}
-	
-	public double getTime(){
-		return this.time;
-	}
+    /**
+     * Get the experiment the event is in.
+     * @return The experiment the event is in.
+     */
+    Experiment getExperiment();
 
-	public Experiment getExperiment(){
-		return this.experiment;
-	}
-	
-	/** Checks if an event takes place before or after this one */
-	public final int compareTo(Event otherEvent){		
-		Double thisTime = this.time;
-		Double otherTime = new Double(otherEvent.getTime());
-		return thisTime.compareTo(otherTime);
-	}
-	
-	abstract public void process();
+    /**
+     * Checks if an event takes place before or after this one.
+     * @param otherEvent - the event to compare to this one
+     * @return the value of
+     * {@link java.lang.Double#compareTo(Double anotherDouble)}
+     * comparing the times of the two events
+     */
+    int compareTo(Event otherEvent);
 
-}//End class Event
+    /**
+     * This function is called when the event occurs.
+     * It is overridden by implementing classes to implement
+     * what a given event should do.
+     */
+    void process();
+
+}

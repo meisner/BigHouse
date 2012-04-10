@@ -25,7 +25,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 package datacenter;
@@ -37,59 +37,103 @@ import generator.Generator;
 import core.Experiment;
 import core.Job;
 
+/**
+ * A BatchPowerNapServer is like a normal server except that jobs are
+ * not directly admitted to the server. Instead they are put in a buffer
+ * and released at regular batch intervals.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
 public class BatchPowerNapServer extends PowerNapServer {
-	
-	private Vector<Job> batch_buffer;
-	
-	private double batch_delay;
-	private StartBatchEvent batch_event;
 
-	public BatchPowerNapServer(int sockets, int coresPerSocket, Experiment experiment, Generator arrivalGenerator, 
-			Generator serviceGenerator, double napTransitionTime,	double napPower, double batchTime) {
-		super(sockets, coresPerSocket, experiment, arrivalGenerator, serviceGenerator, napTransitionTime, napPower);
+    /**
+     * The serialization id.
+     */
+    private static final long serialVersionUID = 1L;
 
-		this.batch_buffer = new Vector<Job>();
-		this.batch_delay = batchTime;
-		
-		  double firstBatchTime = this.batch_delay;
-	        StartBatchEvent startBatchEvent = new StartBatchEvent(batchTime, this.experiment, this);
-	        this.experiment.addEvent(startBatchEvent);
-	        this.batch_event = startBatchEvent;
-		
-	}//MCPowerNapServer()
-	
-	
-	@Override
-	public void insertJob(double time, Job job) {
-		
-		this.batch_buffer.add(job);
-		
-	}//End insertJob()
-	
-	public void startBatch(double time) {
-		
-		Iterator<Job> iter = this.batch_buffer.iterator();
-		
-		while(iter.hasNext()) {
-			Job job = iter.next();
-			super.insertJob(time, job);
-		}//End while
-		
-		this.batch_buffer.clear();
-//		System.out.println(time+": Batch started jobs in system " + this.getJobsInSystem());
-		
-		
-	    double batchTime = time + this.batch_delay;
-        StartBatchEvent startBatchEvent = new StartBatchEvent(batchTime, this.experiment, this);
+    /** The buffer in which jobs are put until the batch is released. */
+    private Vector<Job> batchBuffer;
+
+    /** The time between releasing batches. */
+    private double batchInterval;
+
+    /**
+     * Creates a new BatchPowerNapServer.
+     *
+     * @param sockets - the number of sockets in the server
+     * @param coresPerSocket - the number of cores per socket
+     * @param experiment - the experiment the server is part of
+     * @param arrivalGenerator - the interarrival time generator for the server
+     * @param serviceGenerator - the service time generator for the server
+     * @param napTransitionTime - the transition time in and out
+     * of the nap state
+     * @param napPower - the power of the server while in the nap state
+     * @param theBatchInterval - the amount of time to wait before releasing
+     * a batch of jobs
+     */
+    public BatchPowerNapServer(final int sockets,
+                               final int coresPerSocket,
+                               final Experiment experiment,
+                               final Generator arrivalGenerator,
+                               final Generator serviceGenerator,
+                               final double napTransitionTime,
+                               final double napPower,
+                               final double theBatchInterval) {
+        super(sockets,
+              coresPerSocket,
+              experiment,
+              arrivalGenerator,
+              serviceGenerator,
+              napTransitionTime,
+              napPower);
+        this.batchBuffer = new Vector<Job>();
+        this.batchInterval = theBatchInterval;
+        StartBatchEvent startBatchEvent = new StartBatchEvent(theBatchInterval,
+                                                             this.experiment,
+                                                             this);
         this.experiment.addEvent(startBatchEvent);
-        this.batch_event = startBatchEvent;
-		
-	}//End startBatch()
-	
-	
-	@Override
-	public void removeJob(double time, Job job) {
-		super.removeJob(time, job);
-	}//End removeJob()
+    }
 
-}//End class MCPowerNapServer
+    /**
+     * Inserts a job into the server. This will put the job into a buffer than
+     * directly admitting it.
+     *
+     * @param time - the time the job is inserted
+     * @param job - the job to insert
+     */
+    @Override
+    public void insertJob(final double time, final Job job) {
+        this.batchBuffer.add(job);
+    }
+
+    /**
+     * Starts a batch of jobs. All jobs in the batch buffer will be admitted to
+     * the server.
+     * @param time - the time the batch is started
+     */
+    public void startBatch(final double time) {
+        Iterator<Job> iter = this.batchBuffer.iterator();
+        while (iter.hasNext()) {
+            Job job = iter.next();
+            super.insertJob(time, job);
+        }
+
+        this.batchBuffer.clear();
+        double batchTime = time + this.batchInterval;
+        StartBatchEvent startBatchEvent = new StartBatchEvent(batchTime,
+                this.experiment, this);
+        this.experiment.addEvent(startBatchEvent);
+    }
+
+    /**
+     * Removes a job from the server.
+     *
+     * @param time - the time the job is removed
+     * @param job - the job being removed
+     */
+    @Override
+    public void removeJob(final double time, final Job job) {
+        super.removeJob(time, job);
+    }
+
+}

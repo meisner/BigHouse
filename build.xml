@@ -39,6 +39,8 @@
 
   ant clean - cleans all the .jar and .class files
 
+  ant javadoc - builds the javadocs
+
 -->
 <project default="create_run_jar">
 
@@ -132,12 +134,9 @@
     <target name="javadoc">
         <mkdir dir="${javadoc-dir}"/>
         <javadoc 
-            destdir="${javadoc-dir}/"
-            additionalparam="-J-Dorg.apache.commons.attributes.javadoc.CATaglet.sources=${src-dir}">
-            <taglet
-                name="org.apache.commons.attributes.javadoc.CATaglet"
-                path="${ant.home}/lib/commons-attributes-compiler-2.2.jar"
-             />
+            classpath="Bighouse.classpath"
+            classpathref="Bighouse.classpath"
+            destdir="${javadoc-dir}/">
             <fileset dir="${src-dir}/" includes="**/*.java" />
         </javadoc>
     </target>

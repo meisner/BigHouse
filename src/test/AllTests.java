@@ -25,7 +25,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 package test;
@@ -34,13 +34,16 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
 
+import test.master.MasterTest;
 import test.stat.AllStatTests;
 
+/**
+ * Top level test suite. Tests everything in BigHouse.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
 @RunWith(Suite.class)
-@SuiteClasses( {AllStatTests.class })
-
-//@SuiteClasses( { AllDataCenterTests.class, AllGeneratorTests.class, AllIdealQueueTests.class, AllMathTests.class, AllStatTests.class })
+@SuiteClasses({ AllStatTests.class, MasterTest.class })
 public class AllTests {
-
 
 }

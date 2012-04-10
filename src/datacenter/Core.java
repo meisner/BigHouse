@@ -25,7 +25,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 
@@ -35,384 +35,519 @@ import java.io.Serializable;
 
 import core.CoreEnteredParkEvent;
 import core.CoreExitedParkEvent;
-import core.Event;
+import core.AbstractEvent;
 import core.Experiment;
 import core.Job;
 import core.JobFinishEvent;
-import core.JobHandler;
 import core.Sim;
 
-
 /**
- * This class represents a single core on a processor (socket). It can only run one job at a time. 
+ * This class represents a single core on a processor (socket). It can only run
+ * one job at a time.
+ *
+ * @author David Meisner (meisner@umich.edu)
  */
-public class Core implements Powerable, Serializable{
-
-	private Server server;
-	private Job job; //The currently running job, null if idle
-	private enum PowerState{ACTIVE, TRANSITIONG_TO_LOW_POWER_IDLE, TRANSITIONG_TO_ACTIVE, HALT, LOW_POWER_IDLE}; //Available power states
-	public static enum CorePowerPolicy{NO_MANAGEMENT, CORE_PARKING}; //Available power management policies
-
-	private PowerState power_state; //Current power state
-	private CorePowerPolicy power_policy; //Current power management policy
-
-	// The relative (1.0 is no slowdown) speed the core is operating at (determines job completion times)
-	private double speed; 
-
-	private Experiment experiment;
-	private Socket socket;//The socket this core belongs to
-
-	//Power values
-	private  double active_power;
-	private double park_power;
-	private double halt_power;
-	private double transition_time = 100e-6;
-
-	private Event transition_event;
-	
-	private boolean paused;
-
-	/**
-	 * Constructs a new Core
-	 */
-	public Core(Experiment experiment, Socket socket, Server server){
-		this.experiment = experiment;
-		this.job = null; //Core starts without a job
-		this.socket = socket;
-		this.power_state = PowerState.HALT;
-		//		this.power_policy = PowerPolicy.CORE_PARKING;
-		this.power_policy = CorePowerPolicy.NO_MANAGEMENT;
-
-		this.speed = 1.0; //No slowdown or speedup
-		this.server = server;
-
-		active_power = 40.0*(4.0/5.0)/2;
-		park_power = 0;
-		halt_power = active_power/5.0;
-		transition_time = 100e-6;
-		this.paused = false;
-	}
-
-	public void setPowerPolicy(CorePowerPolicy policy) {
-		this.power_policy = policy;
-	}//End setPowerPolicy()
-
-	public CorePowerPolicy getPowerPolicy() {
-		return this.power_policy;
-	}//End getPowerPolicy()
-
-	//HACK HACK HACK
-	public void setJob(double time, Job job){
-		Sim.debug(666, "Core.setJob()");
-		this.job = job;
-		this.job.markStart(time);
-	}
-	
-	
-	/**
-	 * Puts a job on the core for the first time
-	 */
-	public void insertJob(double time, Job job){
-		Sim.debug(666, "Core.insertJob()");
-
-		//Error check that we never try to put two jobs on one core
-		if(this.job != null){
-			Sim.fatalError("Tried to insert a job into a core that was already busy");
-		}
-
-		//Assign job to core
-		this.job = job;
-
-		if(this.power_state == PowerState.TRANSITIONG_TO_LOW_POWER_IDLE) {
-			//We need to interrupt transitioning to low power idle
-
-			if(this.transition_event.getClass() != CoreEnteredParkEvent.class){
-				Sim.fatalError("Tried to cancel the wrong type of event");
-			}//End if
-
-			this.experiment.cancelEvent(this.transition_event);
-
-		}//End if
-
-
-		if(this.power_state == PowerState.LOW_POWER_IDLE || this.power_state == PowerState.TRANSITIONG_TO_LOW_POWER_IDLE) {
-			//We need to transition out of low power
-
-			double exitTime = time + this.transition_time;
-			CoreExitedParkEvent coreExitedParkEvent = new CoreExitedParkEvent(exitTime, this.experiment, this);
-			this.experiment.addEvent(coreExitedParkEvent);
-
-		} else { 
-
-
-			double alpha = .9;
-			double slowdown = (1 - alpha) + alpha/this.speed;
-			double finishTime = time + this.job.getSize()/slowdown;	
-			Server server = this.socket.getServer();
-			
-			JobFinishEvent finishEvent = new JobFinishEvent(finishTime, experiment, job, server, time, this.speed);
-			job.setLastResumeTime(time);
-			this.experiment.addEvent(finishEvent);
-
-			//Core now goes into full power state
-			this.power_state = PowerState.ACTIVE;
-
-		}//End if
-
-	}//End insertJob()
-
-	/**
-	 * Removes a job from the core because of job completion
-	 */
-	public void removeJob(double time, Job job, boolean jobWaiting){
-
-		//Error check we're not trying to remove a job from an empty core
-		if(this.job == null){
-			Sim.fatalError("Tried to remove a job from a core when there wasn't one");
-		}
-
-		//Error check we're removing the correct job
-		if(!this.job.equals(job)){
-			Sim.fatalError("Tried to remove a job, but it didn't match the job on the core");
-		}
-
-		//Null signifies the core is idle
-		this.job = null;
-
-		//If no job is waiting, we can begin transitioning to a low power state
-		if(!jobWaiting){
-
-			if(this.power_policy == CorePowerPolicy.CORE_PARKING) {
-				this.power_state = PowerState.TRANSITIONG_TO_LOW_POWER_IDLE;
-				double enteredLowPowerTime = time + this.transition_time ;
-				CoreEnteredParkEvent coreEnteredParkEvent = new CoreEnteredParkEvent(enteredLowPowerTime, this.experiment, this);
-				this.transition_event = coreEnteredParkEvent;
-				this.experiment.addEvent(coreEnteredParkEvent);
-
-			} else { 
-				this.power_state = PowerState.HALT;
-			}
-
-		}
-
-	}//End removeJob()
-
-	/**
-	 * Gets the number of jobs this core can currently support.
-	 * 1 if idle, 0 if busy
-	 */
-	public int getRemainingCapacity(){
-		if(this.power_state==PowerState.HALT){
-			return 1;
-		} else {
-			return 0;
-		}//End if
-	}//End getRemainingCapacity()
-
-	/**
-	 * Gets the number of jobs this core can ever support.
-	 * Returns 1.
-	 */
-	public int getTotalCapacity(){
-		return 1;
-	}//End getTotalCapactiy
-
-	/**
-	 * Gets the instant utilization of the core.
-	 */
-	public double getInstantUtilization(){
-		if(this.job == null){
-			return 0.0d;
-		} else {
-			return 1.0d;
-		}
-	}//End getInstantUtilization()
-
-	public Job getJob() {
-		return this.job;
-	}//End getJob()
-
-	public void enterPark(double time) {
-
-		this.power_state = PowerState.LOW_POWER_IDLE;
-
-	}//End enterPark()
-
-	public void exitPark(double time) {
-		Sim.debug(666, "Core.exitPark()");
-
-		if(this.job == null) {
-			Sim.fatalError("Job is null when trying to go to active");
-		}//End if
-
-		double finishTime = time + this.job.getSize();	
-		Server server = this.socket.getServer();
-		JobFinishEvent finishEvent = new JobFinishEvent(finishTime, experiment, job, server, time, this.speed);
-		job.setLastResumeTime(time);
-		this.experiment.addEvent(finishEvent);
-		
-		this.power_state = PowerState.ACTIVE;
-
-	}//End exitPark()
-
-
-
-	//From 0 to 1.0
-	public void setDvfsSpeed(double time, double speed) {
-		this.speed = speed;
-		//Figure out it's new completion time
-		if(this.job != null) {
-
-			JobFinishEvent finishEvent = this.job.getJobFinishEvent();
-			this.experiment.cancelEvent(finishEvent);
-			
-			//	public JobFinishEvent(double time, Experiment experiment, Job job, Server server, double finishSpeed){
-
-			Job job = finishEvent.getJob();
-			double finishSpeed = finishEvent.getFinishSpeed();
-			double finishStartTime = finishEvent.getFinishTimeSet();
-			double duration = time - finishStartTime;
-			double alpha = .9;
-			double previousSlowdown = (1 - alpha) + alpha/finishSpeed;			
-			double workCompleted = duration/previousSlowdown;
-			job.setAmountCompleted(job.getAmountCompleted() + workCompleted);
-					
-			double slowdown = (1 - alpha) + alpha/speed;			
-			double finishTime = time + (job.getSize() - job.getAmountCompleted())/slowdown;
-			
-			JobFinishEvent newFinishEvent = new JobFinishEvent(finishTime, this.experiment, finishEvent.getJob(), this.socket.getServer(), time, this.speed);
-			this.experiment.addEvent(newFinishEvent);
-			
-		}
-		
-	}//End setDvfsSpeed
-
-	public void pauseProcessing(double time) {
-		
-		if(this.paused == true) {
-			Sim.fatalError("Core paused when it was already paused");
-		}		
-		
-		Sim.debug(666, "...|...|...|...|...PAUSING core  at " + time);
-
-		this.paused = true;
-		
-		
-		if(this.job != null) {
-			Sim.debug(666, "...|...|...|...|...Cancelling finish event for " + this.job.getJobId());
-
-			double totalCompleted = this.job.getAmountCompleted() + (time - this.job.getLastResumeTime())/this.speed;	
-			Sim.debug(666, "...|...|...|...|...time " + time +" job " +this.job.getJobId() + " totalCompleted " + totalCompleted + " lastresume "+ this.job.getLastResumeTime() +  " previously completed " +this.job.getAmountCompleted());
-
-			if( totalCompleted  > this.job.getSize() + 1e-5){
-				System.out.println("time " + time + " job "+this.job.getJobId() + " job size " + job.getSize()  + " totalCompleted " + totalCompleted + " lastresume "+ this.job.getLastResumeTime() +  " previously completed " +this.job.getAmountCompleted());
-				Sim.fatalError("totalCompleted can't be more than the job size");			
-			}
-			if(totalCompleted < 0){
-				Sim.fatalError("totalCompleted can't be less than 0");			
-			}
-
-			if(this.job.getAmountCompleted()  < 0){
-				Sim.fatalError("amountCompleted can't be less than 0");			
-			}
-			
-			this.job.setAmountCompleted(totalCompleted);
-			JobFinishEvent finishEvent = this.job.getJobFinishEvent();
-			this.experiment.cancelEvent(finishEvent);
-			
-			
-		}
-	}
-
-	public void resumeProcessing(double time) {
-		Sim.debug(666, "Core.resumeProcessing");
-		
-		if(this.paused == false) {
-			Sim.fatalError("Core resumed when it was already running");
-		}		
-		
-		Sim.debug(666, "...|...|...|...|...RESUMING core  at " + time);
-
-		this.paused = false;
-
-		if(this.job != null) {
-	
-			double timeLeft = (this.job.getSize() - this.job.getAmountCompleted())/this.speed;		
-			
-			Sim.debug(666, "...|...|...|...|...At time " + time + " job " + this.job.getJobId() + " resume is creating a finish event, timeLeft is "+timeLeft + " job size "+this.job.getSize() + " amount completed " + this.job.getAmountCompleted());
-			double finishTime = time + timeLeft;	
-			Server server = this.socket.getServer();
-
-			
-			if( this.job.getAmountCompleted() < 0){
-				System.out.println("At time " + time + " job " + this.job.getJobId() + " resume is creating a finish event, timeLeft is "+timeLeft + " job size "+this.job.getSize() + " amount completed " + this.job.getAmountCompleted());
-
-				Sim.fatalError("amountCompleted can't be less than 0");			
-			}
-			
-			//FISHY
-			if(timeLeft > this.job.getSize() + 1e-6|| timeLeft < -1e6){
-				System.out.println("At time " + time + " job " + this.job.getJobId() + " resume is creating a finish event, timeLeft is "+timeLeft + " job size "+this.job.getSize() + " amount completed " + this.job.getAmountCompleted());
-
-				Sim.fatalError("time left has been miscalculated");			
-			}
-			
-			JobFinishEvent finishEvent = new JobFinishEvent(finishTime, experiment, job, server, time, this.speed);
-			job.setLastResumeTime(time);
-			this.experiment.addEvent(finishEvent);
-		}
-		
-	}
-
-	public void setHaltPower(double coreHaltPower) {
-
-		this.halt_power = coreHaltPower;
-		
-	}
-
-	public void setParkPower(double coreParkPower) {
-		this.park_power = coreParkPower;
-		
-	}
-
-	public void setActivePower(double coreActivePower) {
-
-		this.active_power = coreActivePower;
-		
-	}
-	
-	public double getPower() {
-		return this.getDynamicPower() + this.getIdlePower();
-
-	}//End getPower()
-
-	public double getDynamicPower(){
-		if( this.power_state == PowerState.ACTIVE){
-			return this.active_power - this.halt_power;
-		} else {
-			return 0.0d;
-		}
-	}//End getDynamicPower()
-	
-	public double getIdlePower() {
-		
-		if( this.power_state == PowerState.ACTIVE){
-			return this.halt_power;
-		} else if(this.power_state == PowerState.LOW_POWER_IDLE) {
-			return this.park_power;			
-		} else if(this.power_state == PowerState.TRANSITIONG_TO_ACTIVE) {
-			//No power is saved during transitions
-			return this.active_power;
-		} else if(this.power_state == PowerState.TRANSITIONG_TO_LOW_POWER_IDLE) {
-			//No power is saved during transitions
-			return this.active_power;
-		} else if(this.power_state == PowerState.HALT) {
-			//		  System.out.println("Halt = " +this.halt_power);
-			return this.halt_power;
-		} else {
-			Sim.fatalError("Unknown power setting");
-			return 0;
-		}
-	}//End getIdlePower()
-
-}//End class Core
+public final class Core implements Powerable, Serializable {
+
+    /**
+     * The serializaiton id.
+     */
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * The job running on the core.
+     * Is null if there is no job.
+     */
+    private Job job;
+
+    /**
+     * THe possible power states the core can be in.
+     */
+    private enum PowerState {
+
+        /** The core is actively processing. */
+        ACTIVE,
+
+        /** Transitioning to park. */
+        TRANSITIONINGG_TO_LOW_POWER_IDLE,
+
+        /** Transitioning to active from park. */
+        TRANSITIONINGG_TO_ACTIVE,
+
+        /** The core is in the "halt" mode (idle). */
+        HALT,
+
+        /** The core is in park mode.*/
+        LOW_POWER_IDLE
+    };
+
+    /**
+     * The possible core power management policies.
+     */
+    public static enum CorePowerPolicy {
+        /** No power management. Simply go to halt when idle. */
+        NO_MANAGEMENT,
+        /** Transition to core parking when the core is idle. */
+        CORE_PARKING
+    };
+
+    /** The current core power state. */
+    private PowerState powerState;
+
+    /** The current power management policy. */
+    private CorePowerPolicy powerPolicy;
+
+    /**
+     * The speed at which the core is running.
+     * The relative (1.0 is no slowdown) speed the core is operating at
+     * (determines job completion times)
+     */
+    private double speed;
+
+    /**
+     * The experiment the core is part of.
+     */
+    private Experiment experiment;
+
+    /**
+     * The socket the core is part of.
+     */
+    private Socket socket;
+
+
+    /**
+     * The dynamic power consumption of the core.
+     */
+    private double dynamicPower;
+
+    /**
+     * The power of the core while parked.
+     */
+    private double parkPower;
+
+    /**
+     * The idle power of the core.
+     */
+    private double idlePower;
+
+    /**
+     * The transition time of the core to halt.
+     */
+    private double transitionToParkTime;
+
+    /**
+     * An event representing the core transitioning, if it is happening.
+     * null otherwise.
+     */
+    private AbstractEvent transitionEvent;
+
+    /**
+     * If the core is paused.
+     */
+    private boolean paused;
+
+    /**
+     * Constructs a new Core.
+     *
+     * @param anExperiment - the experiment the core is part of
+     * @param aSocket - the socket the core is part of
+     */
+    public Core(final Experiment anExperiment, final Socket aSocket) {
+        this.experiment = anExperiment;
+        // Core starts without a job
+        this.job = null;
+        this.socket = aSocket;
+        this.powerState = PowerState.HALT;
+        this.powerPolicy = CorePowerPolicy.NO_MANAGEMENT;
+
+        // No slowdown or speedup
+        this.speed = 1.0;
+
+        //TODO fix the magic numbers
+        dynamicPower = 40.0 * (4.0 / 5.0) / 2;
+        parkPower = 0;
+        idlePower = dynamicPower / 5.0;
+        transitionToParkTime = 100e-6;
+        this.paused = false;
+    }
+
+    /**
+     * Sets the power management currently used by the core.
+     * @param policy - the power management policy used by the core
+     */
+    public void setPowerPolicy(final CorePowerPolicy policy) {
+        this.powerPolicy = policy;
+    }
+
+    /**
+     * Gets the power management currently used by the core.
+     * @return the power management policy used by the core
+     */
+    public CorePowerPolicy getPowerPolicy() {
+        return this.powerPolicy;
+    }
+
+    /**
+     * Puts a job on the core for the first time.
+     *
+     * @param time - the time the job is inserted
+     * @param aJob - the job to add to the core
+     */
+    public void insertJob(final double time, final Job aJob) {
+        // Error check that we never try to put two jobs on one core
+        if (this.job != null) {
+            Sim.fatalError("Tried to insert a job into a core"
+                           + " that was already busy");
+        }
+
+        // Assign job to core
+        this.job = aJob;
+
+        if (this.powerState == PowerState.TRANSITIONINGG_TO_LOW_POWER_IDLE) {
+            // We need to interrupt transitioning to low power idle
+            if (this.transitionEvent.getClass()
+                != CoreEnteredParkEvent.class) {
+                Sim.fatalError("Tried to cancel the wrong type of event");
+            }
+            this.experiment.cancelEvent(this.transitionEvent);
+        }
+
+        if (this.powerState == PowerState.LOW_POWER_IDLE
+            || this.powerState == PowerState.TRANSITIONINGG_TO_LOW_POWER_IDLE) {
+            // We need to transition out of low power
+            double exitTime = time + this.transitionToParkTime;
+            CoreExitedParkEvent coreExitedParkEvent = new CoreExitedParkEvent(
+                    exitTime, this.experiment, this);
+            this.experiment.addEvent(coreExitedParkEvent);
+        } else {
+            double alpha = .9;
+            double slowdown = (1 - alpha) + alpha / this.speed;
+            double finishTime = time + this.job.getSize() / slowdown;
+            Server server = this.socket.getServer();
+            JobFinishEvent finishEvent = new JobFinishEvent(finishTime,
+                    experiment, aJob, server, time, this.speed);
+            aJob.setLastResumeTime(time);
+            this.experiment.addEvent(finishEvent);
+            // Core now goes into full power state
+            this.powerState = PowerState.ACTIVE;
+        }
+    }
+
+    /**
+     * Removes a job from the core because of job completion.
+     *
+     * @param time - the time the job is removed
+     * @param aJob - the job that is being removed
+     * @param jobWaiting - if there is a job waiting after this is removed
+     */
+    public void removeJob(final double time,
+                          final Job aJob,
+                          final boolean jobWaiting) {
+        // Error check we're not trying to remove a job from an empty core
+        if (this.job == null) {
+            Sim.fatalError("Tried to remove a job from a core"
+                           + " when there wasn't one");
+        }
+
+        // Error check we're removing the correct job
+        if (!this.job.equals(aJob)) {
+            Sim.fatalError("Tried to remove a job,"
+                           + "but it didn't match the job on the core");
+        }
+
+        // Null signifies the core is idle
+        this.job = null;
+
+        // If no job is waiting, we can begin transitioning to a low power state
+        if (!jobWaiting) {
+
+            if (this.powerPolicy == CorePowerPolicy.CORE_PARKING) {
+                this.powerState = PowerState.TRANSITIONINGG_TO_LOW_POWER_IDLE;
+                double enteredLowPowerTime = time + this.transitionToParkTime;
+                CoreEnteredParkEvent coreEnteredParkEvent
+                    = new CoreEnteredParkEvent(enteredLowPowerTime,
+                                               this.experiment,
+                                               this);
+                this.transitionEvent = coreEnteredParkEvent;
+                this.experiment.addEvent(coreEnteredParkEvent);
+
+            } else {
+                this.powerState = PowerState.HALT;
+            }
+        }
+    }
+
+    /**
+     * Gets the number of jobs this core can currently support.
+     * 1 if idle, 0 if busy.
+     *
+     * @return the number of jobs the core can currently support
+     */
+    public int getRemainingCapacity() {
+        if (this.powerState == PowerState.HALT) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+
+    /**
+     * Gets the number of jobs this core can ever support. Returns 1.
+     *
+     * @return the number of jobs this core can support at once (is 1)
+     */
+    public int getTotalCapacity() {
+        return 1;
+    }
+
+    /**
+     * Gets the instant utilization of the core.
+     *
+     * @return the instant utilization of the core
+     */
+    public double getInstantUtilization() {
+        if (this.job == null) {
+            return 0.0d;
+        } else {
+            return 1.0d;
+        }
+    }
+
+    /**
+     * Get the job running on the core.
+     * Is null if there is no job.
+     *
+     * @return the job running on the core or null
+     */
+    public Job getJob() {
+        return this.job;
+    }
+
+    /**
+     * Puts the core into park mode.
+     *
+     * @param time - the time the core enters park
+     */
+    public void enterPark(final double time) {
+        this.powerState = PowerState.LOW_POWER_IDLE;
+    }
+
+    /**
+     * Takes the core out of park.
+     *
+     * @param time - the time the core exits park
+     */
+    public void exitPark(final double time) {
+        if (this.job == null) {
+            Sim.fatalError("Job is null when trying to go to active");
+        }
+
+        double finishTime = time + this.job.getSize();
+        Server server = this.socket.getServer();
+        JobFinishEvent finishEvent = new JobFinishEvent(finishTime, experiment,
+                job, server, time, this.speed);
+        job.setLastResumeTime(time);
+        this.experiment.addEvent(finishEvent);
+        this.powerState = PowerState.ACTIVE;
+    }
+
+    /**
+     * Sets the DVFS speed of the core.
+     *
+     * @param time - the time the speed is changed
+     * @param theSpeed - the speed to change the core (relative to 1.0)
+     */
+    public void setDvfsSpeed(final double time, final double theSpeed) {
+        this.speed = theSpeed;
+        // Figure out it's new completion time
+        if (this.job != null) {
+
+            JobFinishEvent finishEvent = this.job.getJobFinishEvent();
+            this.experiment.cancelEvent(finishEvent);
+
+            Job theJob = finishEvent.getJob();
+            double finishSpeed = finishEvent.getFinishSpeed();
+            double finishStartTime = finishEvent.getFinishTimeSet();
+            double duration = time - finishStartTime;
+            //TODO Fix this magic number
+            double alpha = 0.9;
+            double previousSlowdown = (1 - alpha) + alpha / finishSpeed;
+            double workCompleted = duration / previousSlowdown;
+            theJob.setAmountCompleted(theJob.getAmountCompleted()
+                                        + workCompleted);
+            double slowdown = (1 - alpha) + alpha / theSpeed;
+            double finishTime = time
+                    + (theJob.getSize() - theJob.getAmountCompleted())
+                        / slowdown;
+
+            JobFinishEvent newFinishEvent = new JobFinishEvent(finishTime,
+                    this.experiment, finishEvent.getJob(),
+                    this.socket.getServer(), time, this.speed);
+            this.experiment.addEvent(newFinishEvent);
+        }
+    }
+
+    /**
+     * Pauses processing at the core.
+     *
+     * @param time - the time the processing is paused
+     */
+    public void pauseProcessing(final double time) {
+        if (this.paused) {
+            Sim.fatalError("Core paused when it was already paused");
+        }
+
+        this.paused = true;
+
+        if (this.job != null) {
+            double totalCompleted = this.job.getAmountCompleted()
+                + (time - this.job.getLastResumeTime()) / this.speed;
+
+            // TODO fix this fudge factor
+            if (totalCompleted > this.job.getSize() + 1e-5) {
+                System.out.println("time " + time + " job "
+                        + this.job.getJobId() + " job size " + job.getSize()
+                        + " totalCompleted " + totalCompleted + " lastresume "
+                        + this.job.getLastResumeTime()
+                        + " previously completed "
+                        + this.job.getAmountCompleted());
+                Sim.fatalError("totalCompleted can't be"
+                               + "more than the job size");
+            }
+
+            if (totalCompleted < 0) {
+                Sim.fatalError("totalCompleted can't be less than 0");
+            }
+
+            if (this.job.getAmountCompleted() < 0) {
+                Sim.fatalError("amountCompleted can't be less than 0");
+            }
+            this.job.setAmountCompleted(totalCompleted);
+            JobFinishEvent finishEvent = this.job.getJobFinishEvent();
+            this.experiment.cancelEvent(finishEvent);
+        }
+    }
+
+    /**
+     * Resumes processing at the core.
+     *
+     * @param time - the time the processing resumes
+     */
+    public void resumeProcessing(final double time) {
+        if (!this.paused) {
+            Sim.fatalError("Core resumed when it was already running");
+        }
+
+        this.paused = false;
+        if (this.job != null) {
+            double timeLeft = (this.job.getSize() - this.job
+                    .getAmountCompleted()) / this.speed;
+
+            double finishTime = time + timeLeft;
+            Server server = this.socket.getServer();
+
+            if (this.job.getAmountCompleted() < 0) {
+                System.out.println("At time " + time + " job "
+                        + this.job.getJobId()
+                        + " resume is creating a finish event, timeLeft is "
+                        + timeLeft + " job size " + this.job.getSize()
+                        + " amount completed " + this.job.getAmountCompleted());
+                Sim.fatalError("amountCompleted can't be less than 0");
+            }
+
+            // TODO this is FISHY
+            if (timeLeft > this.job.getSize() + 1e-6 || timeLeft < -1e6) {
+                System.out.println("At time " + time + " job "
+                        + this.job.getJobId()
+                        + " resume is creating a finish event, timeLeft is "
+                        + timeLeft + " job size " + this.job.getSize()
+                        + " amount completed " + this.job.getAmountCompleted());
+                Sim.fatalError("time left has been miscalculated");
+            }
+
+            JobFinishEvent finishEvent = new JobFinishEvent(finishTime,
+                    experiment, job, server, time, this.speed);
+            job.setLastResumeTime(time);
+            this.experiment.addEvent(finishEvent);
+        }
+    }
+
+    /**
+     * Sets the power of the core while idle (in watts).
+     *
+     * @param coreIdlePower - the power of the core while idle (in watts)
+     */
+    public void setIdlePower(final double coreIdlePower) {
+        this.idlePower = coreIdlePower;
+    }
+
+    /**
+     * Sets the park power of the core (in watts).
+     *
+     * @param coreParkPower - the park power of the core (in watts)
+     */
+    public void setParkPower(final double coreParkPower) {
+        this.parkPower = coreParkPower;
+    }
+
+    /**
+     * Sets the dynamic power consumption of the core (in watts).
+     *
+     * @param coreDynamicPower - the dynamic power consumption
+     * of the core (in watts)
+     */
+    public void setActivePower(final double coreDynamicPower) {
+        this.dynamicPower = coreDynamicPower;
+    }
+
+    /**
+     * Gets the total instantaneous power consumption of the core (in watts).
+     *
+     * @return the total instantaneous power consumption of the core (in watts)
+     */
+    public double getPower() {
+        return this.getDynamicPower() + this.getIdlePower();
+    }
+
+    /**
+     * Gets the instantaneous dynamic power component of the core (in watts).
+     *
+     * @return the instantaneous dynamic power component of the core (in watts).
+     */
+    public double getDynamicPower() {
+        if (this.powerState == PowerState.ACTIVE) {
+            return this.dynamicPower - this.idlePower;
+        } else {
+            return 0.0d;
+        }
+    }
+
+    /**
+     * Gets the instantaneous idle power component
+     * of the core (leakage) (in watts).
+     *
+     * @return the instantaneous idle power component
+     * of the core (leakage) (in watts).
+     */
+    public double getIdlePower() {
+        if (this.powerState == PowerState.ACTIVE) {
+            return this.idlePower;
+        } else if (this.powerState == PowerState.LOW_POWER_IDLE) {
+            return this.parkPower;
+        } else if (this.powerState
+                   == PowerState.TRANSITIONINGG_TO_ACTIVE) {
+            // No power is saved during transitions
+            return this.dynamicPower;
+        } else if (this.powerState
+                   == PowerState.TRANSITIONINGG_TO_LOW_POWER_IDLE) {
+            // No power is saved during transitions
+            return this.dynamicPower;
+        } else if (this.powerState == PowerState.HALT) {
+            return this.idlePower;
+        } else {
+            Sim.fatalError("Unknown power setting");
+            return 0;
+        }
+    }
+
+}

@@ -25,25 +25,18 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 
-/** 
- * This package is only used during development
- * It's not a part of final SQS 
- */
-package experiments;
+package experiment;
 
 import java.util.Vector;
 
 import generator.EmpiricalGenerator;
-import generator.ExponentialGenerator;
-import generator.GammaGenerator;
-import generator.Generator;
 import generator.MTRandom;
 import master.Master;
-import math.Distribution;
+import math.EmpiricalDistribution;
 import core.Experiment;
 import core.ExperimentInput;
 import core.ExperimentOutput;
@@ -55,14 +48,18 @@ import datacenter.Server;
 import datacenter.Core.CorePowerPolicy;
 import datacenter.Socket.SocketPowerPolicy;
 
-public class AccuracySensitivity {
+public class DistributedPowerCappingExperiment {
 
-	public AccuracySensitivity(){
+	public DistributedPowerCappingExperiment(){
 		
 	}//End PowerCappingExperiment()
 	
-	public void run(double accuracy, String workloadDir, String workload, int waitOn, int capOn) {
+	public void run(String workloadDir, String workload, int nServers) {
 
+		
+
+		Master master = new Master();
+		master.addSlave("test","test");
 
 		ExperimentInput experimentInput = new ExperimentInput();		
 
@@ -75,32 +72,10 @@ public class AccuracySensitivity {
 		int sockets = 1;
 		double targetRho = .5;
 		
-		Distribution arrivalDistribution = Distribution.loadDistribution(arrivalFile, 1e-3);
-		Distribution serviceDistribution = Distribution.loadDistribution(serviceFile, 1e-3);
+		EmpiricalDistribution arrivalDistribution = EmpiricalDistribution.loadDistribution(arrivalFile, 1e-3);
 		double averageInterarrival = arrivalDistribution.getMean();
+		EmpiricalDistribution serviceDistribution = EmpiricalDistribution.loadDistribution(serviceFile, 1e-3);
 		double averageServiceTime = serviceDistribution.getMean();
-		MTRandom rand = new MTRandom(1);
-		
-//		double arrivalK = 1.0;  
-//		double arrivalTheta =1.0;
-		
-//		double arrivalAvg = 1.0;
-//		double serviceAvg = .5;
-////		double serviceCv = 2.0;
-//		double arrivalCv = 2.0;
-//		
-//		double arrivalK = 1/(arrivalCv*arrivalCv);  
-//		double arrivalTheta = arrivalAvg/arrivalK;
-//		
-//		double serviceK = 1/(serviceCv*serviceCv);  
-//		double serviceTheta = serviceAvg/serviceK;
-		
-//		Generator arrivalGenerator = new ExponentialGenerator(rand, lambda);
-//		Generator arrivalGenerator = new GammaGenerator(rand, arrivalK, arrivalTheta);
-//		Generator serviceGenerator = new GammaGenerator(rand, serviceK, serviceTheta);
-//		double averageInterarrival = 1;
-//		double averageServiceTime = serviceAvg;
-
 		double qps = 1/averageInterarrival;
 		double rho = qps/(cores*(1/averageServiceTime));
 		double arrivalScale = rho/targetRho;
@@ -120,17 +95,12 @@ public class AccuracySensitivity {
 		System.out.println("Service rate x" + cores + " is: "+ (serviceRate)*cores);
 		System.out.println("\n------------------\n");
 
-		EmpiricalGenerator arrivalGenerator  = new EmpiricalGenerator(rand,arrivalDistribution, "arrival", arrivalScale);
-		EmpiricalGenerator serviceGenerator  = new EmpiricalGenerator(rand,serviceDistribution, "service", 1.0);
+		MTRandom rand = new MTRandom(1);
+		
+		EmpiricalGenerator arrivalGenerator  = new EmpiricalGenerator(rand, arrivalDistribution, "arrival", arrivalScale);
+		EmpiricalGenerator serviceGenerator  = new EmpiricalGenerator(rand, serviceDistribution, "service", 1.0);
 		ExperimentOutput experimentOutput = new ExperimentOutput();
-		experimentOutput.addOutput(StatName.SOJOURN_TIME, accuracy, .95, accuracy, 5000);
-		if(waitOn==1){
-		experimentOutput.addOutput(StatName.WAIT_TIME, accuracy, .95, accuracy, 5000);
-		}
-		if(capOn==1){
-		experimentOutput.addOutput(StatName.SERVER_LEVEL_CAP, accuracy, .95, accuracy, 5000);
-		}
-
+		experimentOutput.addOutput(StatName.SOJOURN_TIME, .05, .95, .05, 5000);
 //		experimentOutput.addOutput(StatName.SERVER_LEVEL_CAP, .05, .95, .05, 5000);
 //		experimentOutput.addTimeWeightedOutput(TimeWeightedStatName.SERVER_POWER, .01, .5, .01, 50000, .001);
 		Experiment experiment = new Experiment("Power capping test", rand, experimentInput, experimentOutput);
@@ -139,7 +109,6 @@ public class AccuracySensitivity {
 		
 //		public PowerCappingEnforcer(Experiment experiment, double capPeriod, double globalCap, double maxPower, double minPower) {
 //		int nServers = 100;
-		int nServers = 100;
 		double capPeriod = 1.0;
 		double globalCap = 70*nServers;
 		double maxPower = 100*nServers;
@@ -159,14 +128,16 @@ public class AccuracySensitivity {
 
 			server.setCoreActivePower(coreActivePower);
 			server.setCoreParkPower(coreParkPower);
-			server.setCoreHaltPower(coreHaltPower);
+			server.setCoreIdlePower(coreHaltPower);
 
 			server.setSocketActivePower(socketActivePower);
 			server.setSocketParkPower(socketParkPower);
-			dataCenter.addServer(server);
 			enforcer.addServer(server);
-		}
-		experimentInput.addDataCenter(dataCenter);
+			dataCenter.addServer(server);
+		}//End for i
+		
+		
+		experimentInput.setDataCenter(dataCenter);
 		experiment.run();
 		double responseTimeMean = experiment.getStats().getStat(StatName.SOJOURN_TIME).getAverage();
 		System.out.println("Response Mean: " + responseTimeMean);
@@ -178,8 +149,8 @@ public class AccuracySensitivity {
 	}//End run()
 	
 	public static void main(String[] args) {
-		AccuracySensitivity exp  = new AccuracySensitivity();
-		exp.run(Double.valueOf(args[0]),args[1],args[2],Integer.valueOf(args[3]),Integer.valueOf(args[4]));
+		DistributedPowerCappingExperiment exp  = new DistributedPowerCappingExperiment();
+		exp.run(args[0],args[1],Integer.valueOf(args[2]));
 	}
 	
 }//End PowerCappingExperiment

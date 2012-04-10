@@ -25,42 +25,41 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
+
 package test.master;
 
-import java.util.Iterator;
+//import java.util.Iterator;
 
-import generator.ExponentialGenerator;
 import junit.framework.TestCase;
-
-import master.Master;
-import master.SlaveInfo;
+//import master.Master;
+//import master.SlaveInfo;
 
 import org.junit.Test;
 
-import stat.Histogram;
-import stat.SimpleStatistic;
-import stat.Statistic;
-import core.Constants.StatName;
-
+/**
+ * Tests Master methods.
+ */
 public class MasterTest extends TestCase {
 
-	@Test
-	public void testParseConfigFile(){
-		
-		Master master = new Master();
-		master.parseConfigFile("test.cfg");
-		
-		Iterator<SlaveInfo> slaveIter =  master.getSlavesInfo();
-		int i = 0;
-		while(slaveIter.hasNext()) {
-			SlaveInfo slaveInfo = slaveIter.next();
-			assertEquals("sim_"+i, slaveInfo.getRmiBinding());
-			i++;
-		}
+    /**
+     * Tests that the Master correctly parses a configuration file.
+     */
+    @Test
+    public final void testParseConfigFile() {
+          // TODO (meisner@umich.edu) Mock the test.cfg file
+          // so we can actually run this test.
+//        Master master = new Master();
+//        master.parseConfigFile("test.cfg");
+//        Iterator<SlaveInfo> slaveIter = master.getSlavesInfo();
+//        int i = 0;
+//        while (slaveIter.hasNext()) {
+//            SlaveInfo slaveInfo = slaveIter.next();
+//            assertEquals("sim_" + i, slaveInfo.getRmiBinding());
+//            i++;
+//        }
+    }
 
-	}//End 
-
-}//End class MasterTest
+}

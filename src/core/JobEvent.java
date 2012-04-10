@@ -31,19 +31,45 @@
 
 package core;
 
-import datacenter.Server;
+/**
+ * An abstract JobEvent class to extend for various kinds of events
+ * relating to jobs in servers.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
+public abstract class JobEvent extends AbstractEvent {
 
-public abstract class JobEvent extends Event {
+    /**
+     * The serialization id.
+     */
+    private static final long serialVersionUID = 1L;
 
-	protected Job job;
-	
-	public JobEvent(double time, Experiment experiment, Job job){
-		super(time, experiment);
-		this.job = job;
-	}
-	
-	public Job getJob(){
-		return this.job;
-	}	
-	
+    /**
+     * The job related to the event.
+     */
+    private Job job;
+
+    /**
+     * Creates a new job event.
+     *
+     * @param time - the time the event takes place
+     * @param experiment - the experiment the event is in
+     * @param aJob - the job related to the event
+     */
+    public JobEvent(final double time,
+                    final Experiment experiment,
+                    final Job aJob) {
+        super(time, experiment);
+        this.job = aJob;
+    }
+
+    /**
+     * Get the job of the event.
+     *
+     * @return the event's job
+     */
+    public final Job getJob() {
+        return this.job;
+    }
+
 }

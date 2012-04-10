@@ -25,7 +25,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 package slave;
@@ -37,90 +37,151 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 
-import stat.StatsCollection;
+import stat.StatisticsCollection;
 
 import core.Experiment;
 
-public class Slave implements SimInterface {
+/**
+ * The top-level calss and main entry point for slaves
+ * in a distributed simulation.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
+public final class Slave implements SimInterface {
 
-	private String bind_name;
-	private String hostname;
-	private ExperimentRunner experiment_runner;
-	
-	public Slave(String bindName) {
+    /** The RMI binding name. */
+    private String bindName;
 
-	     this.bind_name = bindName;
-	      try {
-	          InetAddress addr = InetAddress.getLocalHost();
+    /** The hostname of the server. */
+    private String hostname;
 
-	          // Get IP Address
-	          byte[] ipAddr = addr.getAddress();
+    /** The experiment runner thread. */
+    private ExperimentRunner experimentRunner;
 
-	          // Get hostname
-	          this.hostname = addr.getHostName();
-	      } catch (UnknownHostException e) {
-	      }
+    /**
+     * Creates a new slave.
+     *
+     * @param theBindName - the RMI binding name
+     */
+    public Slave(final String theBindName) {
+        this.bindName = theBindName;
+        try {
 
-		
-	}//End Slave()
-	
-	public void setup(){
-		
-		try {			
-			SimInterface stub = (SimInterface) UnicastRemoteObject.exportObject(this, 0);
-			// Bind the remote object's stub in the registry
-			Registry registry = LocateRegistry.getRegistry();
-			registry.bind(this.bind_name, stub);
-			System.err.println("Server ready");
-		} catch (Exception e) {
-			System.err.println("Server exception: " + e.toString());
-			e.printStackTrace();
-		}
-		
-	}//End setup()
+            InetAddress addr = InetAddress.getLocalHost();
+            this.hostname = addr.getHostName();
 
-	public String sayHello() {
-        return "Hello from "+hostname+" bound on "+bind_name;
-	}//End sayHello()
+        } catch (UnknownHostException e) {
+            //TODO Handle exception
+        }
+    }
 
-	public static void main(String args[]) {
-		Slave slave = new Slave(args[0]);
-		slave.setup();
-	}//End main()
-	
-	public void stop() throws RemoteException{
-		System.out.println("Goodbye!");
-		this.experiment_runner.getExperiment().stop();
-	}
-	
-	public void RunExperiment(Experiment experiment) throws RemoteException {
-	  System.out.println(experiment.getName());	
-	  System.out.println("Slave is starting simulation");
-	  this.experiment_runner = new ExperimentRunner(experiment);
-	  this.experiment_runner.start();
-	  System.out.println("Slave returned from run call");
-	}//End runExperiment()
+    /**
+     * Ready the slave to accept RMI binding.
+     */
+    public void setup() {
 
-	public StatsCollection getExperimentStats() throws RemoteException {
-		return this.experiment_runner.getExperiment().getStats();		
-	}//End stopExperiment()
-	
-	private class ExperimentRunner extends Thread{
-		
-		private Experiment experiment;
-		
-		public ExperimentRunner(Experiment experiment) {
-			this.experiment = experiment;
-		}
-		
-		public Experiment getExperiment() {
-			return this.experiment;
-		}
+        try {
+            SimInterface stub
+                = (SimInterface) UnicastRemoteObject.exportObject(this, 0);
+            // Bind the remote object's stub in the registry
+            Registry registry = LocateRegistry.getRegistry();
+            registry.bind(this.bindName, stub);
+            System.err.println("Server ready");
+        } catch (Exception e) {
+            System.err.println("Server exception: " + e.toString());
+            e.printStackTrace();
+        }
 
-		public void run() {
-			this.experiment.run();			
-		}
-		
-	}
-	
-}//End class Slave
+    }
+
+    /**
+     * A remote interface to ping the slave and say hello back.
+     *
+     * @return a hello message
+     */
+    public String sayHello() {
+        return "Hello from " + hostname + " bound on " + bindName;
+    }
+
+    /**
+     * The slave main function. Creates a slave and has it setup.
+     * @param args - command line arguments.
+     * The first should be the RMI bind name.
+     */
+    public static void main(final String[] args) {
+        Slave slave = new Slave(args[0]);
+        slave.setup();
+    }
+
+    /**
+     * Stops the slave.
+     *
+     * @throws RemoteException - if the stop fails
+     */
+    public void stop() throws RemoteException {
+        System.out.println("Goodbye!");
+        this.experimentRunner.getExperiment().stop();
+    }
+
+    /**
+     * has the slave run an experiment.
+     *
+     * @param experiment - the experiment to run
+     * @throws RemoteException - an exception if the remote interface fails
+     */
+    public void runExperiment(final Experiment experiment)
+            throws RemoteException {
+        System.out.println(experiment.getName());
+        System.out.println("Slave is starting simulation");
+        this.experimentRunner = new ExperimentRunner(experiment);
+        this.experimentRunner.start();
+        System.out.println("Slave returned from run call");
+    }
+
+    /**
+     * Gets the statistics collection of the slave.
+     *
+     * @return the statistics collection of the slave
+     * @throws RemoteException - an exception if the remote interface fails
+     */
+    public StatisticsCollection getExperimentStats() throws RemoteException {
+        return this.experimentRunner.getExperiment().getStats();
+    }
+
+    /**
+     * An experiment runner is a thread of execution which
+     * runs an experiment.
+     */
+    private class ExperimentRunner extends Thread {
+
+        /** The experiment to run. */
+        private Experiment experiment;
+
+        /**
+         * Creates a new ExperimentRunner.
+         *
+         * @param anExperiment - the experiment to run
+         */
+        public ExperimentRunner(final Experiment anExperiment) {
+            this.experiment = anExperiment;
+        }
+
+        /**
+         * Gets the experiment being run.
+         *
+         * @return - the experiment being run
+         */
+        public Experiment getExperiment() {
+            return this.experiment;
+        }
+
+        /**
+         * Start the thread and run the experiment.
+         */
+        public void run() {
+            this.experiment.run();
+        }
+
+    }
+
+}

@@ -25,45 +25,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
+ * Testing package for statistics testing.
  */
-package generator;
-
-public class MyHyperExponentialGenerator extends Generator {
-
-	private HyperExponentialGenerator hyper_exponential_generator;
-	
-	public MyHyperExponentialGenerator(MTRandom random, int k, double lambda){
-		super(random);
-		
-		int numSource = 30;
-		double weight = 1.0;
-		
-		double[][] lambdas = new double[numSource][2];
-
-		double newLamb = lambda;
-		for(int i = 0; i < numSource; i++){
-			weight = weight/2;
-			newLamb = newLamb*3;
-			lambdas[i][0] = weight;
-			//System.out.println("weight + " + weight);
-			//System.out.println("newLamb + " + newLamb);
-			lambdas[i][1] = newLamb;
-		}
-		
-		this.hyper_exponential_generator = new HyperExponentialGenerator(random, lambdas);
-	}
-
-	@Override
-	public double next() {
-		return this.hyper_exponential_generator.next();
-	}
-	
-	@Override
-	public String getName() {
-		return "MyHyperExponential";
-	}
-	
-	
-}
+package stat;

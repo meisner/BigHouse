@@ -25,24 +25,68 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 package stat;
 
 import core.Constants.StatName;
 
+/**
+ * Represents the merge of two {@link Statistic}s.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
 public class CombinedStatistic extends Statistic {
 
-	public CombinedStatistic(StatsCollection statsColection, StatName statName, int warmupSamples, double meanAccuracy, 
-			double quantile, double quantileAccuracy, SimpleStatistic simpleStat, Histogram histogram, int lagSpace,
-			long combinedGoodSamples, long combinedTotalSamples, long combinedDiscardedSamples) {
-		super(statsColection, statName, warmupSamples, meanAccuracy, quantile, quantileAccuracy, simpleStat, histogram, lagSpace,
-				combinedGoodSamples, combinedTotalSamples, combinedDiscardedSamples);
-		
-		super.phase = Phase.STEADYSTATE;
+    /** The serialization id. */
+    private static final long serialVersionUID = 1L;
 
-	}//End CombinedStatistic()
+    /**
+     * Creates a new CombinedStatistic.
+     *
+     * @param aStatCollection - the statistic collection
+     * that this statistic belongs to.
+     * @param aStatName - the name of the statistic
+     * @param theNWarmupSamples - the number of warmup
+     * samples the statistic needs
+     * @param meanAccuracy - the accuracy desired for the mean estimate
+     * @param theQuantile - the desired quantile
+     * (should be the most difficult quantile to achieve)
+     * @param quantileAccuracy - the accuracy desired for the quantile estimate
+     * @param aSimpleStat - the simple statistic to copy
+     * @param aHistogram - the histogram to copy
+     * @param lagSpace - the lag spacing to use
+     * @param combinedGoodSamples - the number of good samples seen
+     * @param combinedTotalSamples - the total number of samples seen
+     * @param combinedDiscardedSamples - the number of samples discarded
+     */
+    public CombinedStatistic(final StatisticsCollection aStatCollection,
+                             final StatName aStatName,
+                             final int theNWarmupSamples,
+                             final double meanAccuracy,
+                             final double theQuantile,
+                             final double quantileAccuracy,
+                             final SimpleStatistic aSimpleStat,
+                             final Histogram aHistogram,
+                             final int lagSpace,
+                             final long combinedGoodSamples,
+                             final long combinedTotalSamples,
+                             final long combinedDiscardedSamples) {
+        super(aStatCollection,
+              aStatName,
+              theNWarmupSamples,
+              meanAccuracy,
+              theQuantile,
+              quantileAccuracy,
+              aSimpleStat,
+              aHistogram,
+              lagSpace,
+              combinedGoodSamples,
+              combinedTotalSamples,
+              combinedDiscardedSamples);
 
-	
-}//End class CombinedStatistic
+        super.phase = Phase.STEADYSTATE;
+    }
+
+}

@@ -25,28 +25,55 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 package generator;
 
-public class ConstantGenerator extends Generator {
+/**
+ * Generates a constant number.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
+public final class ConstantGenerator extends Generator {
 
-	public double value;
-	
-	public ConstantGenerator(MTRandom mtRandom,double value){
-		super(mtRandom);
-		this.value = value;
-	}
-	
-	@Override
-	public double next() {
-		return this.value;
-	}
+    /**
+     * The serialization id.
+     */
+    private static final long serialVersionUID = 1L;
 
-	@Override
-	public String getName() {
-		return "Constant Generator";
-	}
+    /** The value to return every time. */
+    public double value;
+
+    /**
+     * Creates a new ConstantGenerator.
+     *
+     * @param mtRandom - the random number generator
+     * @param theValue - the value to return
+     */
+    public ConstantGenerator(final MTRandom mtRandom, final double theValue) {
+        super(mtRandom);
+        this.value = theValue;
+    }
+
+    /**
+     * Generate the next value.
+     *
+     * @return the next value
+     */
+    @Override
+    public double next() {
+        return this.value;
+    }
+
+    /**
+     * Gets the name of the generator.
+     *
+     * @return the name of the generator
+     */
+    @Override
+    public String getName() {
+        return "Constant Generator";
+    }
 
 }

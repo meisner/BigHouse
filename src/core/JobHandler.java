@@ -31,9 +31,27 @@
 
 package core;
 
+/**
+ * An interface for objects that can receive and remove jobs.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
 public interface JobHandler {
 
-	public void insertJob(double time, Job job);
-	public void removeJob(double time, Job job);
-	
+    /**
+     * Inserts a job into the handler.
+     *
+     * @param time - the time the job is inserted
+     * @param job - the job to insert
+     */
+    void insertJob(double time, Job job);
+
+    /**
+     * Removes a time from the handler.
+     *
+     * @param time - the time the job is removed
+     * @param job - the job to remove
+     */
+    void removeJob(final double time, final Job job);
+
 }

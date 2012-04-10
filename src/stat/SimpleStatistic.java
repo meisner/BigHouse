@@ -25,90 +25,151 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 package stat;
 
 import java.io.Serializable;
 
-public class SimpleStatistic implements Serializable{
+/**
+ * A simple statistic tracks the count, average,
+ * standard deviation, min and max of a statistic.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
+public class SimpleStatistic implements Serializable {
 
-	private long s0;
+    /** The serialization id. */
+    private static final long serialVersionUID = 1L;
 
-	private double s1;
-	private double s2; 
-	private double min_value;
-	private double max_value;
-	
-	
-	public SimpleStatistic() {
-		this(0,0,0,Double.MAX_VALUE,Double.MIN_VALUE);
-	}//End SimpleStatistic()
-	
-	public SimpleStatistic(long s0, double s1, double s2, double minValue, double maxValue) {
-		
-		this.s0 = s0;
-		this.s1 = s1;
-		this.s2 = s2;
-		this.min_value = minValue;
-		this.max_value = maxValue;
-		
-	}//End SimpleStatistic()
-	
-	public SimpleStatistic combineSimpleStatistics(SimpleStatistic stat) {
-		
-		long combinedS0 = this.s0 + stat.s0;
-		double combinedS1 = this.s1 + stat.s1;
-		double combinedS2 = this.s2 + stat.s2;
-		double combinedMinValue = Math.min(this.min_value, stat.min_value);
-		double combinedMaxValue = Math.max(this.max_value, stat.max_value);
-		
-		SimpleStatistic combinedStat = new SimpleStatistic(combinedS0, combinedS1, combinedS2, combinedMinValue, combinedMaxValue);
-		
-		return combinedStat;
-		
-	}//End combineSimpleStatistics()
-	
-	public void addSample(double value) {
-		this.s0 += 1;
-		this.s1 += value;
-		this.s2 += value*value;
-		this.min_value = Math.min(this.min_value, value);
-		this.max_value = Math.max(this.max_value, value);
-	}//End insert()
-	
-	public long getS0() {
-		return s0;
-	}//End getS0()
+    /** The count of samples. */
+    private long s0;
 
-	public double getS1() {
-		return s1;
-	}//End getS1()
+    /** The cumulative value of samples. */
+    private double s1;
 
-	public double getS2() {
-		return s2;
-	}//End getS2()
+    /** The cumulative value of squares of samples.*/
+    private double s2;
 
-	public double getMinValue() {
-		return min_value;
-	}//End getMinValue()
+    /** The min value observed. */
+    private double minValue;
 
-	public double getMaxValue() {
-		return max_value;
-	}//End getMaxValue()
+    /** The max value observed. */
+    private double maxValue;
 
-	public double getAverage() {
-		return s1/s0;		
-	}//End getAverage()
+    /**
+     * Creates a new, empty statistic.
+     */
+    public SimpleStatistic() {
+        this(0, 0, 0, Double.MAX_VALUE, Double.MIN_VALUE);
+    }
 
-	//http://en.wikipedia.org/wiki/Standard_deviation#Rapid_calculation_methods
-	public double getStdDev() {
-		return Math.sqrt((s0*s2 - s1*s1)/(s0*(s0-1)));		
-	}//End getStdDev()
+    /**
+     * Creates a new SimpleStatistic.
+     *
+     * @param theS0 - the s0 value
+     * @param theS1 - the s1 value
+     * @param theS2 - the s2 value
+     * @param theMinValue - the min value
+     * @param theMaxValue - the max value
+     */
+    public SimpleStatistic(final long theS0,
+                           final double theS1,
+                           final double theS2,
+                           final double theMinValue,
+                           final double theMaxValue) {
+        this.s0 = theS0;
+        this.s1 = theS1;
+        this.s2 = theS2;
+        this.minValue = theMinValue;
+        this.maxValue = theMaxValue;
+    }
 
-	public double getTotal() {
-		return this.s1;		
-	}
-	
-}//End class SimpleStatistic
+    /**
+     * Combines a SimpleStatistic with this one.
+     *
+     * @param stat - the SimpleStatistic to combine with this one
+     * @return the combined SimpleStatistic.
+     */
+    public SimpleStatistic combineSimpleStatistics(final SimpleStatistic stat) {
+        long combinedS0 = this.s0 + stat.s0;
+        double combinedS1 = this.s1 + stat.s1;
+        double combinedS2 = this.s2 + stat.s2;
+        double combinedMinValue = Math.min(this.minValue, stat.minValue);
+        double combinedMaxValue = Math.max(this.maxValue, stat.maxValue);
+        SimpleStatistic combinedStat = new SimpleStatistic(combinedS0,
+                                                           combinedS1,
+                                                           combinedS2,
+                                                           combinedMinValue,
+                                                           combinedMaxValue);
+
+        return combinedStat;
+    }
+
+    /**
+     * Add a sample to the simple statistic.
+     *
+     * @param value - the value of the sample
+     */
+    public void addSample(final double value) {
+        this.s0 += 1;
+        this.s1 += value;
+        this.s2 += value * value;
+        this.minValue = Math.min(this.minValue, value);
+        this.maxValue = Math.max(this.maxValue, value);
+    }
+
+    /**
+     * Get the number of samples.
+     *
+     * @return the number of samples
+     */
+    public long getCount() {
+        return s0;
+    }
+
+    /**
+     * Get the minimum observed value.
+     *
+     * @return the minimum observed value
+     */
+    public double getMinValue() {
+        return minValue;
+    }
+
+    /**
+     * Get the maximum observed value.
+     *
+     * @return the maximum observed value
+     */
+    public double getMaxValue() {
+        return maxValue;
+    }
+
+    /**
+     * Get the average of the values.
+     * @return the average of the values.
+     */
+    public double getAverage() {
+        return s1 / s0;
+    }
+
+    /**
+     * Gets the standard deviation.
+     * See: http://en.wikipedia.org/wiki/Standard_deviation#Rapid_calculation_methods
+     * @return the standard deviation
+     */
+    public double getStdDev() {
+        return Math.sqrt((s0 * s2 - s1 * s1) / (s0 * (s0 - 1)));
+    }
+
+    /**
+     * Gets the total accumulation of values.
+     * @return the total accumulation of values
+     */
+    public double getTotalAccumulation() {
+        return this.s1;
+    }
+
+}

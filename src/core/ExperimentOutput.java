@@ -36,52 +36,145 @@ import java.io.Serializable;
 import core.Constants.StatName;
 import core.Constants.TimeWeightedStatName;
 import stat.Statistic;
-import stat.StatsCollection;
+import stat.StatisticsCollection;
 import stat.TimeWeightedStatistic;
 
-/** 
- * This class is just a big wrapper for StatsCollection 
+/**
+ * Defines the outputs of an experiment.
+ * Effectively a big wrapper around a StatsCollection.
+ *
+ * @author David Meisner (meisner@umich.edu)
  */
-public class ExperimentOutput implements Serializable{
-	
-	private StatsCollection stats;
-	
-	public ExperimentOutput(){
-		this.stats = new StatsCollection();
+public final class ExperimentOutput implements Serializable {
 
-	}//End ExperimentOutput()
-	
-	public void addOutput(StatName name, double meanPrecision, double quantile, double quantilePrecision, int warmupSamples) {
-		
-		Statistic stat = new Statistic(stats, name, warmupSamples, meanPrecision, quantile, quantilePrecision);
-		this.stats.addStatistic(name, stat);
-		
-	}//End addOutput
-	
-	public void addOutput(StatName name, double meanPrecision, double quantile, double quantilePrecision, int warmupSamples, double[] xValues) {
-		
-		Statistic stat = new Statistic(stats, name, warmupSamples, meanPrecision, quantile, quantilePrecision, xValues);
-		this.stats.addStatistic(name, stat);
-		
-	}//End addOutput
-	
-	public void addTimeWeightedOutput(TimeWeightedStatName name, double meanPrecision, double quantile, double quantilePrecision, int warmupSamples, double window) {
-		
-		TimeWeightedStatistic stat = new TimeWeightedStatistic(stats, name, warmupSamples, meanPrecision, quantile, quantilePrecision, window);
-		this.stats.addTimeWeightedStatistic(name, stat);
-		
-	}//End addTimeWeightedOutput
+    /**
+     * The serialization id.
+     */
+    private static final long serialVersionUID = 1L;
 
-	public StatsCollection getStats() {
-		return this.stats;
-	}//End getStats()
-	
-	public Statistic getStat(StatName statName) {
-		return this.stats.getStat(statName);
-	}//End getStat()
-	
-	public Statistic getTimeWeightedStat(TimeWeightedStatName statName) {
-		return this.stats.getTimeWeightedStat(statName);
-	}//End getStat()
-	
-}//ExperimentOutput
+    /**
+     * The collection of statistics for the simulation.
+     */
+    private StatisticsCollection statisticsCollection;
+
+    /**
+     * Creates a new ExperimentOutput.
+     */
+    public ExperimentOutput() {
+        this.statisticsCollection = new StatisticsCollection();
+
+    }
+
+    /**
+     * Adds an output to be observed by the simulation.
+     *
+     * @param name - The name of the simulation
+     * @param meanPrecision - The precision on the mean estimate
+     * (e.g., .05 is less than 5% error with 95% confidence)
+     * @param quantile - The quantile to ensure precision on
+     * @param quantilePrecision - the precision for the quantile
+     * (e.g., .05 is less than 5% error with 95% confidence)
+     * @param warmupSamples - The number of warmup samples.
+     * There is no de facto way to determine what this value should be.
+     */
+    public void addOutput(final StatName name,
+                          final double meanPrecision,
+                          final double quantile,
+                          final double quantilePrecision,
+                          final int warmupSamples) {
+        Statistic stat = new Statistic(statisticsCollection,
+                                       name,
+                                       warmupSamples,
+                                       meanPrecision,
+                                       quantile,
+                                       quantilePrecision);
+        this.statisticsCollection.addStatistic(name, stat);
+    }
+
+    /**
+     * Adds an output to be observed by the simulation.
+     *
+     * @param name - The name of the simulation
+     * @param meanPrecision - The precision on the mean estimate
+     * (e.g., .05 is less than 5% error with 95% confidence)
+     * @param quantile - The quantile to ensure precision on
+     * @param quantilePrecision - the precision for the quantile
+     * (e.g., .05 is less than 5% error with 95% confidence)
+     * @param warmupSamples - The number of warmup samples.
+     * There is no de facto way to determine what this value should be.
+     * @param xValues - The x values for the histogram of the output
+     */
+    public void addOutput(final StatName name,
+                          final double meanPrecision,
+                          final double quantile,
+                          final double quantilePrecision,
+                          final int warmupSamples,
+                          final double[] xValues) {
+        Statistic stat = new Statistic(statisticsCollection,
+                                       name,
+                                       warmupSamples,
+                                       meanPrecision,
+                                       quantile,
+                                       quantilePrecision,
+                                       xValues);
+        this.statisticsCollection.addStatistic(name, stat);
+    }
+
+    /**
+     * Adds a time-weigthed output to be observed by the simulation.
+     *
+     * @param name - The name of the simulation
+     * @param meanPrecision - The precision on the mean estimate
+     * (e.g., .05 is less than 5% error with 95% confidence)
+     * @param quantile - The quantile to ensure precision on
+     * @param quantilePrecision - the precision for the quantile
+     * (e.g., .05 is less than 5% error with 95% confidence)
+     * @param warmupSamples - The number of warmup samples.
+     * There is no de facto way to determine what this value should be.
+     * @param window - The window (in seconds) over which to take samples.
+
+     */
+    public void addTimeWeightedOutput(final TimeWeightedStatName name,
+                                      final double meanPrecision,
+                                      final double quantile,
+                                      final double quantilePrecision,
+                                      final int warmupSamples,
+                                      final double window) {
+        TimeWeightedStatistic stat
+            = new TimeWeightedStatistic(statisticsCollection,
+                                        name,
+                                        warmupSamples,
+                                        meanPrecision,
+                                        quantile,
+                                        quantilePrecision,
+                                        window);
+        this.statisticsCollection.addTimeWeightedStatistic(name, stat);
+    }
+
+    /**
+     * Gets the statistics collection for the output.
+     * @return - the statistics collection
+     */
+    public StatisticsCollection getStats() {
+        return this.statisticsCollection;
+    }
+
+    /**
+     * Get an individual statistic of the output.
+     * @param statName - the name of the individual statistic
+     * @return the statistic
+     */
+    public Statistic getStat(final StatName statName) {
+        return this.statisticsCollection.getStat(statName);
+    }
+
+    /**
+     * Get an individual statistic of the output.
+     * @param statName - the name of the individual statistic
+     * @return the statistic
+     */
+    public Statistic getTimeWeightedStat(final TimeWeightedStatName statName) {
+        return this.statisticsCollection.getTimeWeightedStat(statName);
+    }
+
+}

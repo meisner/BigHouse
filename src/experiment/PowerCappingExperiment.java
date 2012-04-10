@@ -25,22 +25,15 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 
-/** 
- * This package is only used during development
- * It's not a part of final SQS 
- */
-package experiments;
-
-import java.util.Vector;
+package experiment;
 
 import generator.EmpiricalGenerator;
 import generator.MTRandom;
-import master.Master;
-import math.Distribution;
+import math.EmpiricalDistribution;
 import core.Experiment;
 import core.ExperimentInput;
 import core.ExperimentOutput;
@@ -49,25 +42,23 @@ import core.Constants.TimeWeightedStatName;
 import datacenter.DataCenter;
 import datacenter.PowerCappingEnforcer;
 import datacenter.Server;
+import datacenter.PowerNapServer;
 import datacenter.Core.CorePowerPolicy;
 import datacenter.Socket.SocketPowerPolicy;
 
-public class DistributedPowerCappingExperiment {
+public class PowerCappingExperiment {
 
-	public DistributedPowerCappingExperiment(){
-		
-	}//End PowerCappingExperiment()
+	public PowerCappingExperiment(){
+
+	}
 	
 	public void run(String workloadDir, String workload, int nServers) {
-
 		
-
-		Master master = new Master();
-		master.addSlave("test","test");
 
 		ExperimentInput experimentInput = new ExperimentInput();		
 
-
+//		String arrivalFile = workloadDir+"workloads/www.arrival.cdf";
+//		String serviceFile = workloadDir+"workloads/www.service.cdf";
 		String arrivalFile = workloadDir+"workloads/"+workload+".arrival.cdf";
 		String serviceFile = workloadDir+"workloads/"+workload+".service.cdf";
 		System.out.println("arrival file "+arrivalFile);
@@ -76,9 +67,10 @@ public class DistributedPowerCappingExperiment {
 		int sockets = 1;
 		double targetRho = .5;
 		
-		Distribution arrivalDistribution = Distribution.loadDistribution(arrivalFile, 1e-3);
+		EmpiricalDistribution arrivalDistribution = EmpiricalDistribution.loadDistribution(arrivalFile, 1e-3);
+		EmpiricalDistribution serviceDistribution = EmpiricalDistribution.loadDistribution(serviceFile, 1e-3);
+
 		double averageInterarrival = arrivalDistribution.getMean();
-		Distribution serviceDistribution = Distribution.loadDistribution(serviceFile, 1e-3);
 		double averageServiceTime = serviceDistribution.getMean();
 		double qps = 1/averageInterarrival;
 		double rho = qps/(cores*(1/averageServiceTime));
@@ -105,7 +97,7 @@ public class DistributedPowerCappingExperiment {
 		EmpiricalGenerator serviceGenerator  = new EmpiricalGenerator(rand, serviceDistribution, "service", 1.0);
 		ExperimentOutput experimentOutput = new ExperimentOutput();
 		experimentOutput.addOutput(StatName.SOJOURN_TIME, .05, .95, .05, 5000);
-//		experimentOutput.addOutput(StatName.SERVER_LEVEL_CAP, .05, .95, .05, 5000);
+		experimentOutput.addOutput(StatName.SERVER_LEVEL_CAP, .05, .95, .05, 5000);
 //		experimentOutput.addTimeWeightedOutput(TimeWeightedStatName.SERVER_POWER, .01, .5, .01, 50000, .001);
 		Experiment experiment = new Experiment("Power capping test", rand, experimentInput, experimentOutput);
 		
@@ -114,12 +106,13 @@ public class DistributedPowerCappingExperiment {
 //		public PowerCappingEnforcer(Experiment experiment, double capPeriod, double globalCap, double maxPower, double minPower) {
 //		int nServers = 100;
 		double capPeriod = 1.0;
-		double globalCap = 70*nServers;
+		double globalCap = 65*nServers;
 		double maxPower = 100*nServers;
 		double minPower = 59*nServers;
 		PowerCappingEnforcer enforcer = new PowerCappingEnforcer(experiment, capPeriod, globalCap, maxPower, minPower);
 		for(int i = 0; i < nServers; i++) {
 			Server server = new Server(sockets, cores, experiment, arrivalGenerator, serviceGenerator);
+//			Server server = new PowerNapServer(sockets, cores, experiment, arrivalGenerator, serviceGenerator, 0.001, 5);
 
 			server.setSocketPolicy(SocketPowerPolicy.NO_MANAGEMENT);
 			server.setCorePolicy(CorePowerPolicy.NO_MANAGEMENT);	
@@ -132,7 +125,7 @@ public class DistributedPowerCappingExperiment {
 
 			server.setCoreActivePower(coreActivePower);
 			server.setCoreParkPower(coreParkPower);
-			server.setCoreHaltPower(coreHaltPower);
+			server.setCoreIdlePower(coreHaltPower);
 
 			server.setSocketActivePower(socketActivePower);
 			server.setSocketParkPower(socketParkPower);
@@ -141,7 +134,7 @@ public class DistributedPowerCappingExperiment {
 		}//End for i
 		
 		
-		experimentInput.addDataCenter(dataCenter);
+		experimentInput.setDataCenter(dataCenter);
 		experiment.run();
 		double responseTimeMean = experiment.getStats().getStat(StatName.SOJOURN_TIME).getAverage();
 		System.out.println("Response Mean: " + responseTimeMean);
@@ -153,7 +146,7 @@ public class DistributedPowerCappingExperiment {
 	}//End run()
 	
 	public static void main(String[] args) {
-		DistributedPowerCappingExperiment exp  = new DistributedPowerCappingExperiment();
+		PowerCappingExperiment exp  = new PowerCappingExperiment();
 		exp.run(args[0],args[1],Integer.valueOf(args[2]));
 	}
 	

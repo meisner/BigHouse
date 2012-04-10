@@ -25,39 +25,49 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 package test.stat;
 
 import junit.framework.TestCase;
-
 import org.junit.Test;
-
-import stat.Sequence;
 import stat.SimpleStatistic;
-import core.Constants.StatName;
 
+/**
+ * Tests the SimpleStatisticTest.
+ *
+ * @see stat.SimpleStatistic
+ * @author David Meisner (meisner@umich.edu)
+ */
 public class SimpleStatisticTest extends TestCase {
 
-	@Test
-	public void testInsert(){
-		SimpleStatistic stat = new SimpleStatistic();
-		
-		stat.addSample(-1);
-		stat.addSample(1);
-		stat.addSample(2);
-		stat.addSample(3);
-		
-		assertEquals(4, stat.getS0());
-		assertEquals(1.25, stat.getAverage());
-		assertEquals(1.7078, stat.getStdDev(),.001);
-		
-	}//End testInsert()
-	
-	@Test
-	public void testCombineSimpleStatistics(){
+    /**
+     * Tests adding a sample to a SimpleStatisticTest.
+     *
+     * @see stat.SimpleStatistic#addSample(double)
+     */
+    @Test
+    public final void testAddSample() {
+        final double firstSample = -1;
+        final double secondSample = 1;
+        final double thirdSample = 2;
+        final double fourthSample = 3;
+        final int count = 4;
+        final double average = 1.25;
+        final double standardDeviation = 1.7078;
+        final double tolerance = .001;
 
-	}//End testInsert()
+        SimpleStatistic stat = new SimpleStatistic();
 
-}//End class ServerTest
+        stat.addSample(firstSample);
+        stat.addSample(secondSample);
+        stat.addSample(thirdSample);
+        stat.addSample(fourthSample);
+
+        assertEquals(count, stat.getCount());
+        assertEquals(average, stat.getAverage());
+        assertEquals(standardDeviation, stat.getStdDev(), tolerance);
+    }
+
+}

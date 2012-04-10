@@ -25,7 +25,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 package datacenter;
@@ -34,31 +34,59 @@ import java.io.Serializable;
 import java.util.Iterator;
 import java.util.Vector;
 
-/** This class will hold all the physical objects for now */
-public class DataCenter implements Serializable{
+/**
+ * This class will hold all the physical objects in the datacenter for now.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
+public final class DataCenter implements Serializable {
 
-	private Vector<Server> servers;
+    /**
+     * The serialization id.
+     */
+    private static final long serialVersionUID = 1L;
 
-	public DataCenter(){
+    /**
+     * The servers in the datacenter.
+     */
+    private Vector<Server> servers;
 
-			this.servers = new Vector<Server>();
-	}
-	
-	public void addServer(Server server) {
-		this.servers.add(server);
-	}
-	
-	public Vector<Server> getServers(){
-		return this.servers;
-	}
+    /**
+     * Creates a new datacenter.
+     */
+    public DataCenter() {
+        this.servers = new Vector<Server>();
+    }
 
-	public void updateStatistics(double time) {
+    /**
+     * Adds a server to the datacenter.
+     *
+     * @param server - the server to add
+     */
+    public void addServer(final Server server) {
+        this.servers.add(server);
+    }
 
-		Iterator<Server> iter = this.servers.iterator();
-		while(iter.hasNext()) {
-			iter.next().updateStatistics(time);
-		}
-		
-	}
-	
-}//End class DataCenter
+    /**
+     * Gets the servers in the datacenter.
+     *
+     * @return the server in the datacenter
+     */
+    public Vector<Server> getServers() {
+        return this.servers;
+    }
+
+    /**
+     * Updates the statistics of all the objects in the datacenter.
+     *
+     * @param time
+     *            - the time the statistics are updated
+     */
+    public void updateStatistics(final double time) {
+        Iterator<Server> iter = this.servers.iterator();
+        while (iter.hasNext()) {
+            iter.next().updateStatistics(time);
+        }
+    }
+
+}

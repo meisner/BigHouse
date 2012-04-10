@@ -25,7 +25,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 
@@ -33,11 +33,12 @@
  * This package is only used during development
  * It's not a part of final SQS 
  */
-package experiments;
+package experiment;
 
+//TODO delete this
 import generator.EmpiricalGenerator;
 import generator.MTRandom;
-import math.Distribution;
+import math.EmpiricalDistribution;
 import core.Experiment;
 import core.ExperimentInput;
 import core.ExperimentOutput;
@@ -70,8 +71,8 @@ public class SingleMachine {
 		int sockets = 1;
 		double targetRho = .5;
 		
-		Distribution arrivalDistribution = Distribution.loadDistribution(arrivalFile, 1e-3);
-		Distribution serviceDistribution = Distribution.loadDistribution(serviceFile, 1e-3);
+		EmpiricalDistribution arrivalDistribution = EmpiricalDistribution.loadDistribution(arrivalFile, 1e-3);
+		EmpiricalDistribution serviceDistribution = EmpiricalDistribution.loadDistribution(serviceFile, 1e-3);
 
 		double averageInterarrival = arrivalDistribution.getMean();
 		double averageServiceTime = serviceDistribution.getMean();
@@ -128,7 +129,7 @@ public class SingleMachine {
 
 			server.setCoreActivePower(coreActivePower);
 			server.setCoreParkPower(coreParkPower);
-			server.setCoreHaltPower(coreHaltPower);
+			server.setCoreIdlePower(coreHaltPower);
 
 			server.setSocketActivePower(socketActivePower);
 			server.setSocketParkPower(socketParkPower);
@@ -137,7 +138,7 @@ public class SingleMachine {
 		}//End for i
 		
 		
-		experimentInput.addDataCenter(dataCenter);
+		experimentInput.setDataCenter(dataCenter);
 		experiment.run();
 		double responseTimeMean = experiment.getStats().getStat(StatName.SOJOURN_TIME).getAverage();
 		System.out.println("Response Mean: " + responseTimeMean);

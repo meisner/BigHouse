@@ -27,63 +27,138 @@
  *
  * @author David Meisner (meisner@umich.edu)
  *
- */  
+ */
 
 package core;
 
-public interface Constants {
-	
-	/** 
-	 * Outputs which can be monitored have to be defined here
-	 */
-	public static enum StatName {
-		IDLE_PERIOD_TIME, //Per job response times
-		SOJOURN_TIME, //Per job response times
-		TOTAL_CAPPING, //Total power capping of a cluster
-		FULL_SYSTEM_IDLE_FRACTION,
-		BUSY_PERIOD_TIME,
-		GENERATED_ARRIVAL_TIME,
-		GENERATED_SERVICE_TIME,
-		WAIT_TIME, SERVER_LEVEL_CAP,
-		
-	}
-	
-	public static enum TimeWeightedStatName {
-		SERVER_POWER, SERVER_UTILIZATION, SERVER_IDLE_FRACTION
-	}//End enum TimeWeightedStatName
-	
-	/** 
-	 * Power numbers 
-	 */
-	public static final int SERVER_IDLE_OTHER_POWER = 1;
-	public static final int SERVER_DYN_OTHER_POWER = 1;
-	public static final int SERVER_IDLE_MEM_POWER = 1;
-	public static final int SERVER_DYN_MEM_POWER = 1;
-	public static final int SOCKET_IDLE_POWER = 1;
-	public static final int SOCKET_TRANSITION_POWER = 1;
-	public static final int SOCKET_PARK_POWER = 1;
-	public static final int CORE_ACTIVE_POWER = 1;
-	public static final int CORE_IDLE_POWER = 1;
-	public static final int CORE_TRANSITION_POWER = 1;
-	public static final int CORE_TPARK_POWER = 1;
-	
-	public static final int MAX_QUEUE_SIZE = 500000;
-	
-	/** Values for statistical tests */
-	public static final double Z_95_CONFIDENCE = 1.96;
-	public static final double CHI_2_95_TEST = 12.592;
-	
-	/** Time window for which to compute utilization of a machine */
-	public static final double DEFAULT_UTILIZATION_WINDOW = .01; //10ms
-	public static final double DEFAULT_IDLENESS_WINDOW = .01; //10ms
-	
-	/** Statistics constants */
-	public static final int RUNS_TEST_BUFFER_SIZE = 50000;
-	public static final long MINIMUM_CONVERGE_SAMPLES = 10;
-	public static final int GIVE_UP_STRIDE = 100;
+/**
+ * Constants for the entire simulator.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
+public final class Constants {
 
-	public static final int DEBUG_VERBOSE = 5;
+    /**
+     * Should never be called.
+     */
+    private Constants() {
 
-	public static final double QUANTILE_A = .3;;
-	
-}//End interface Constants
+    }
+
+    /**
+     * Outputs which can be monitored as a Statistic have to be defined here.
+     */
+    public static enum StatName {
+        /** Length in time of idle periods. */
+        IDLE_PERIOD_TIME,
+
+        /** Per job response time. */
+        SOJOURN_TIME,
+
+        /** Amount of capping (in watts) for a cluster. */
+        TOTAL_CAPPING,
+
+        /** Fraction of time a server is completely idle. */
+        FULL_SYSTEM_IDLE_FRACTION,
+
+        /** Amount of time a server is busy. */
+        BUSY_PERIOD_TIME,
+
+        /** The interarrival time as generated in the simulation. */
+        GENERATED_ARRIVAL_TIME,
+
+        /** The job service time as generated in the simulation. */
+        GENERATED_SERVICE_TIME,
+
+        /** Per-job wait time. */
+        WAIT_TIME,
+
+        /** Amount of capping (in watts) for an individual server. */
+        SERVER_LEVEL_CAP,
+    }
+
+    /**
+     * Outputs which can be monitored as a TimeWeightedStatistic have to be
+     * defined here.
+     */
+    public static enum TimeWeightedStatName {
+        /** Time-weighted server power. */
+        SERVER_POWER,
+
+        /** Time-weighted server utilization. */
+        SERVER_UTILIZATION,
+
+        /** Time-weighted fraction of time a server is idle. */
+        SERVER_IDLE_FRACTION
+    }
+
+    /* Power breakdown for servers. */
+    // TODO(meisner@umich.edu) Fill in these values.
+    /** Power of "other" components at idle. */
+    public static final int SERVER_IDLE_OTHER_POWER = 1;
+
+    /** Dynamic power of "other" components at max. */
+    public static final int SERVER_DYN_OTHER_POWER = 1;
+
+    /** Power of the memory system at idle. */
+    public static final int SERVER_IDLE_MEM_POWER = 1;
+
+    /** Dynamic power of the memory system at max.*/
+    public static final int SERVER_DYN_MEM_POWER = 1;
+
+     /** Power of CPU "uncore" at idle. */
+    public static final int SOCKET_IDLE_POWER = 1;
+
+    /** Power transitioning the "uncore" of a CPU. */
+    public static final int SOCKET_TRANSITION_POWER = 1;
+
+    /** Power of CPU "uncore" while in socket parking. */
+    public static final int SOCKET_PARK_POWER = 1;
+
+    /** Dynamic power of CPU core at max. */
+    public static final int CORE_ACTIVE_POWER = 1;
+
+     /** Power of CPU core components at idle. */
+    public static final int CORE_IDLE_POWER = 1;
+
+    /** Power of transitioning a core in/out of park. */
+    public static final int CORE_TRANSITION_POWER = 1;
+
+    /** Power of CPU core while parked. */
+    public static final int CORE_PARK_POWER = 1;
+
+    /* Transition times */
+
+    /** The time to transition the socket into park. */
+    public static final double SOCKET_PARK_TRANSITION_TIME = 500e-6;
+
+    /** Maximum length of queues. */
+    public static final int MAX_QUEUE_SIZE = 500000;
+
+    /* Values for statistical tests */
+    /** Z value for 95th-percentile confidence from a normal distribution. */
+    public static final double Z_95_CONFIDENCE = 1.96;
+
+    /** Parameter for 95th-percentile in a Chi-squared test. */
+    public static final double CHI_2_95_TEST = 12.592;
+
+    /** Time window over which to compute utilization of a machine. */
+    public static final double DEFAULT_UTILIZATION_WINDOW = .01;
+
+    /** Time window over which to compute idleness of a machine. */
+    public static final double DEFAULT_IDLENESS_WINDOW = .01;
+
+    /* Constants for Statistics */
+    /** Size of the buffer for the runs test. */
+    public static final int RUNS_TEST_BUFFER_SIZE = 50000;
+
+    /** The minimum number of samples to converge a statistic. */
+    public static final long MINIMUM_CONVERGE_SAMPLES = 10;
+
+    /** The maximum stride length between samples before giving up. */
+    public static final int GIVE_UP_STRIDE = 100;
+
+    /** The level of verbosity for debugging. */
+    public static final int DEBUG_VERBOSE = 5;
+
+}

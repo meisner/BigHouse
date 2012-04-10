@@ -33,18 +33,42 @@ package core;
 
 import datacenter.Core;
 
-public class CoreExitedParkEvent extends Event {
+/**
+ * Represents a core leaving parking.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
+public final class CoreExitedParkEvent extends AbstractEvent {
 
-	private Core core;
-	
-	public CoreExitedParkEvent(double time, Experiment experiment, Core core) {
-		super(time, experiment);
-		this.core = core;
-	}//End CoreExitedParkEvent()
+    /**
+     * The serialization ID.
+     */
+    private static final long serialVersionUID = 1L;
 
-	@Override
-	public void process() {
-		this.core.exitPark(this.time);
-	}//End process()
+    /**
+     * The core to take out of park.
+     */
+    private Core core;
 
-}//End CoreExitedParkEvent()
+    /**
+     * Constructs a CoreExitedParkEvent.
+     * @param time - The time the core exits parking.
+     * @param experiment - The experiment in which the event occurs.
+     * @param aCore - The core which is exiting parking.
+     */
+    public CoreExitedParkEvent(final double time,
+                               final Experiment experiment,
+                               final Core aCore) {
+        super(time, experiment);
+        this.core = aCore;
+    }
+
+    /**
+     * Takes the core out of park.
+     */
+    @Override
+    public void process() {
+        this.core.exitPark(this.time);
+    }
+
+}

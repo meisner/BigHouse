@@ -25,26 +25,60 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author David Meisner (meisner@umich.edu)
+ * @author: David Meisner (meisner@umich.edu)
  *
  */
-package test.stat;
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
-import org.junit.runners.Suite.SuiteClasses;
+package core;
+
+import datacenter.DreamWeaverServer;
 
 /**
- * Tests all statistics-based test.
+ * Represents a job in a DreamWeaver reaching is maximum allowed delay.
+ * At this point it has "timed out" and the server must handle it.
  *
  * @author David Meisner (meisner@umich.edu)
  */
-@RunWith(Suite.class)
-@SuiteClasses({ HistogramTest.class,
-                 SequenceTest.class,
-                 SimpleStatisticTest.class,
-                 StatisticTest.class })
-public class AllStatTests {
+public final class DreamWeaverJobTimeoutEvent extends AbstractEvent {
 
+    /**
+     * The serialization id.
+     */
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * The DreamWeaverServer the job is in.
+     */
+    private DreamWeaverServer dreamWeaverServer;
+
+    /**
+     * The job which times out.
+     */
+    private Job job;
+
+    /**
+     * Creates a new DreamWeaverJobTimeoutEvent.
+     *
+     * @param time - the time the job times out
+     * @param experiment - the experiment the event takes place in
+     * @param theJob - the job that times out
+     * @param theDreamWeaverServer - the server the job was on
+     */
+    public DreamWeaverJobTimeoutEvent(final double time,
+            final Experiment experiment, final Job theJob,
+            final DreamWeaverServer theDreamWeaverServer) {
+        super(time, experiment);
+        this.dreamWeaverServer = theDreamWeaverServer;
+        this.job = theJob;
+    }
+
+    /**
+     * Notifies the DreamWeaver server processing the job that the job
+     * has timed out.
+     */
+    @Override
+    public void process() {
+        this.dreamWeaverServer.handleJobTimeout(this.getTime(), job);
+    }
 
 }

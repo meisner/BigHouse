@@ -25,52 +25,87 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 package master;
 
-import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
 import slave.SimInterface;
 
-public class SlaveInfo {
+/**
+ * Tracks info about slaves in a simulation.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
+public final class SlaveInfo {
 
-	public String server_name;
-	public String rmi_binding;
-	public SimInterface sim_interface;
-	
-	public SlaveInfo(String serverName, String rmiBinding) {
-		this.server_name = serverName;
-		this.rmi_binding = rmiBinding;
-	}//End SlaveInfo()
-	
-	public String getServerName(){
-		return this.server_name;
-	}//End getServerName()
-	
-	public String getRmiBinding(){
-		return this.rmi_binding;
-	}//End getRmiBinding()
-	
-	public SimInterface getInterface() {
-		return this.sim_interface;
-	}//End getInterface()
-	
-	public void connect() {
-		
-		try {
-			Registry registry = LocateRegistry.getRegistry(this.server_name);
-			SimInterface stub = (SimInterface) registry.lookup(this.rmi_binding);		
-			this.sim_interface = stub;
-			System.out.println("Connected "+this.server_name+" to "+this.rmi_binding);
-		} catch (Exception e) {
-			System.out.println("Slave connection failed");
-			e.printStackTrace();
-		}
+    /**
+     * The name of the slave.
+     */
+    private String serverName;
 
-	}//End connect()
-	
-}//End class SlaveInfo
+    /**
+     * The RMI binding of the slave.
+     */
+    private String rmiBinding;
+
+    /**
+     * The interface by which the slave is accessed.
+     */
+    private SimInterface simInterface;
+
+    /**
+     * Creates a SlaveInfo to represent a slave.
+     * @param name - The name of the slave.
+     * @param binding - The RMI binding to connect to the slave.
+     */
+    public SlaveInfo(final String name, final String binding) {
+        this.serverName = name;
+        this.rmiBinding = binding;
+    }
+
+    /**
+     * Gets the name of the server.
+     * @return The server name
+     */
+    public String getServerName() {
+        return this.serverName;
+    }
+
+    /**
+     * Gets the RMI binding to access a slave.
+     * @return The RMI binding string
+     */
+    public String getRmiBinding() {
+        return this.rmiBinding;
+    }
+
+    /**
+     * Gets the interface to the slave.
+     * @return The slave interface
+     */
+    public SimInterface getInterface() {
+        return this.simInterface;
+    }
+
+    /**
+     * Connects to the server referred to by this SlaveInfo.
+     */
+    public void connect() {
+        try {
+            Registry registry = LocateRegistry.getRegistry(this.serverName);
+            SimInterface stub = (SimInterface) registry
+                                .lookup(this.rmiBinding);
+            this.simInterface = stub;
+            System.out.println("Connected " + this.serverName + " to "
+                               + this.rmiBinding);
+        } catch (Exception e) {
+            System.out.println("Slave connection failed");
+            e.printStackTrace();
+        }
+    }
+
+}

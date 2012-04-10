@@ -25,7 +25,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 package test.stat;
@@ -35,120 +35,114 @@ import junit.framework.TestCase;
 import org.junit.Test;
 
 import stat.Sequence;
-import stat.SimpleStatistic;
-import core.Constants.StatName;
 
+/**
+ * Tests for the {@link Sequence} class.
+ *
+ * @author meisner@umich.edu
+ */
 public class SequenceTest extends TestCase {
 
-	@Test
-	public void testGetSequence(){
+    // TODO fix magic numbers
+    /**
+     * Tests {@link Sequence#getValues()}.
+     */
+    @Test
+    public void testGetValues() {
+        Sequence sequence = new Sequence();
 
-		Sequence sequence = new Sequence();
+        for (int i = 0; i < 10; i++) {
+            sequence.insert(i);
+        }
 
-		for(int i = 0; i < 10; i++) {
-			sequence.insert(i);	
-		}//End for i
+        double[] values = sequence.getValues();
 
-		double[] values = sequence.getValues();
+        for (int i = 0; i < 10; i++) {
+            assertEquals(i, values[i], .001);
+        }
+    }
 
-		for(int i = 0; i < 10; i++) {
-			assertEquals(i, values[i], .001);	
-		}//End for i		
+    // TODO fix magic numbers
+    /**
+     * Tests {@link Sequence#chiSquaredQuantile(double, int)}.
+     */
+    @Test
+    public void testChiSquaredQuantile() {
+        assertEquals(12.592, Sequence.chiSquaredQuantile(.95, 6), .001);
+        assertEquals(9.488, Sequence.chiSquaredQuantile(.95, 4), .001);
+        assertEquals(37.653, Sequence.chiSquaredQuantile(.95, 25), .001);
+        assertEquals(6.346, Sequence.chiSquaredQuantile(.5, 7), .001);
+    }
 
-	}//End testGetSequence()
+    /**
+     * Tests {@link Sequence#getRunCounts(double[], int)}.
+     */
+    @Test
+    public void testGetRunCounts() {
+        Sequence sequence = new Sequence();
 
-	@Test
-	public void testChiSquaredQuantile(){
-		
-		assertEquals(12.592, Sequence.chiSquaredQuantile(.95, 6), .001);
-		assertEquals(9.488, Sequence.chiSquaredQuantile(.95, 4), .001);
-		assertEquals(37.653, Sequence.chiSquaredQuantile(.95, 25), .001);
-		assertEquals(6.346, Sequence.chiSquaredQuantile(.5, 7), .001);
-		
-	}//End testChiSquaredQuantile()
-	
-	@Test
-	public void testGetRunCounts(){
+        double[] insertValues = {1, 2, 3, 4, 5, 6, 7, 8, 9, 5, 3, 2, 1, 5, 11,
+                12, 3, 13, 14, 3, 100, 99, 98, 97, 96, 95, 94, 93, 92, 101};
 
-		Sequence sequence = new Sequence();
+        for (int i = 0; i < insertValues.length; i++) {
+            sequence.insert(insertValues[i]);
+        }
 
-		double[] insertValues = {1,2,3,4,5,6,7,8,9, 5,
-				3,2,1, 5, 
-				11,12, 3, 
-				13,14, 3, 
-				100, 99, 98, 97, 96, 95, 94, 93, 92, 101};
-		
-		for(int i = 0; i < insertValues.length; i++) {
-			sequence.insert(insertValues[i]);	
-		}//End for i
+        int[] runCounts = Sequence.getRunCounts(sequence.getValues(), 6);
 
-		int[] runCounts = Sequence.getRunCounts(sequence.getValues(), 6);
+        assertEquals(2, runCounts[0]);
+        assertEquals(1, runCounts[1]);
+        assertEquals(2, runCounts[5]);
+    }
 
-//		for(int i = 0; i < runCounts.length; i++) {
-//			System.out.println(runCounts[i] + ",");			
-//		}
+    /**
+     * Tests {@link Sequence#calculateLagSpacing(int, int, double)}.
+     */
+    @Test
+    public void testCalculateLagSpacing() {
+        Sequence sequence = new Sequence();
 
-		
-		assertEquals(2, runCounts[0]);
-		assertEquals(1, runCounts[1]);
-		assertEquals(2, runCounts[5]);
+        double[] insertValues = { 1, 1, 1, 1 };
+        for (int i = 0; i < insertValues.length; i++) {
+            sequence.insert(insertValues[i]);
+        }
+    }
 
+    /**
+     * Tests {@link Sequence#isIndependentByRunsTest(int[], double)}.
+     */
+    @Test
+    public void testIsIndependentByRunsTest() {
+        int[] runCounts = {500, 333, 125};
+        int maxRun = 3;
+        double confidence = .95;
+        assertEquals(true,
+                Sequence.isIndependentByRunsTest(runCounts, confidence));
+        int[] runCounts2 = {100, 100, 800};
+        assertEquals(false,
+                Sequence.isIndependentByRunsTest(runCounts2, confidence));
+    }
 
-	}//End testCalculateLagSpacing()
+    /**
+     * Tests {@link Sequence#getSpacedSequence(double[], int)}.
+     */
+    @Test
+    public void testGetSpacedSequence() {
+        double[] seq = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 
-	@Test
-	public void testCalculateLagSpacing(){
+        double[] spaced = Sequence.getSpacedSequence(seq, 2);
+        assertEquals(5, spaced.length);
+        assertEquals(1, spaced[0], .001);
+        assertEquals(3, spaced[1], .001);
+        assertEquals(5, spaced[2], .001);
+        assertEquals(7, spaced[3], .001);
+        assertEquals(9, spaced[4], .001);
 
-		Sequence sequence = new Sequence();
+        spaced = Sequence.getSpacedSequence(seq, 3);
+        assertEquals(3, spaced.length);
+        assertEquals(1, spaced[0], .001);
+        assertEquals(4, spaced[1], .001);
+        assertEquals(7, spaced[2], .001);
+    }
 
-		double[] insertValues = {1,1,1,1};
-		for(int i = 0; i < insertValues.length; i++) {
-			sequence.insert(insertValues[i]);	
-		}//End for i
-
-	}//End testCalculateLagSpacing()
-
-	@Test
-	public void testIsIndependentByRunsTest() {
-		int[] runCounts = {500, 333, 125};
-		int maxRun = 3;
-		double confidence = .95;
-		assertEquals(true, Sequence.isIndependentByRunsTest(runCounts, confidence));
-		int[] runCounts2 = {100, 100, 800};
-		assertEquals(false, Sequence.isIndependentByRunsTest(runCounts2, confidence));
-
-	}//End testIsIndependentByRunsTest()
-	
-	@Test
-	public void testGetSpacedSequence(){
-
-		double[] seq = {1,2,3,4,5,6,7,8,9,10};
-
-		double[] spaced = Sequence.getSpacedSequence(seq, 2);
-		assertEquals(5, spaced.length);
-		assertEquals(1, spaced[0], .001);
-		assertEquals(3, spaced[1], .001);
-		assertEquals(5, spaced[2], .001);
-		assertEquals(7, spaced[3], .001);
-		assertEquals(9, spaced[4], .001);
-
-		spaced = Sequence.getSpacedSequence(seq, 3);
-		assertEquals(3, spaced.length);
-		assertEquals(1, spaced[0], .001);
-		assertEquals(4, spaced[1], .001);
-		assertEquals(7, spaced[2], .001);
-
-	}//End testGetSpacedSequence()
-
-	@Test
-	public void testFactorial(){
-
-		assertEquals(1, Sequence.factorial(1));
-		assertEquals(2, Sequence.factorial(2));
-		assertEquals(6, Sequence.factorial(3));
-		assertEquals(24, Sequence.factorial(4));
-		assertEquals(120, Sequence.factorial(5));
-
-	}//End testFactorial()
-
-}//End class ServerTest
+}

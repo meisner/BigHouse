@@ -25,92 +25,104 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 package test.stat;
 
-import generator.ExponentialGenerator;
 import junit.framework.TestCase;
 
 import org.junit.Test;
 
 import stat.Histogram;
-import stat.SimpleStatistic;
-import stat.Statistic;
-import core.Constants.StatName;
 
+/**
+ * Test for the {@link Histogram} class.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
 public class HistogramTest extends TestCase {
 
-	@Test
-	public void testInsert(){
-		
-		Histogram histogram = new Histogram(10, 0, 100);
-		histogram.addSample(-1.0);
-		assertEquals(1, histogram.getYValues()[0], .001); 
-		
-		histogram.addSample(1000);
-		double[] yValues = histogram.getYValues(); 
-		assertEquals(1, yValues[yValues.length-1], .001); 
-		
-	}//End testInsert()
-	
-	@Test
-	public void testGetQuantile() {
-		
-		Histogram histogram = new Histogram(10, 0, 100);
-		for(int i = 0; i < 10; i++) {
-			histogram.addSample(10.0 * (i+1));
-		}//End for i
+    /**
+     * Tests {@link Histogram#addSample(double)}.
+     */
+    @Test
+    public void testAddSample() {
 
-		for(int i = 0; i < 10; i++) {
-			double quantileValue = histogram.getQuantile(i/10.0);
-			assertEquals(10.0*i, quantileValue, .001);
-		}//End for i;
-		
-		double quantileValue = histogram.getQuantile(.99);
-		assertEquals(99, quantileValue, .001);
-		
-	}//End testGetQuantile()
+        Histogram histogram = new Histogram(10, 0, 100);
+        histogram.addSample(-1.0);
+        assertEquals(1, histogram.getYValues()[0], .001);
 
-	
-	@Test
-	public void testGetCdfValue() {
-		Histogram histogram = new Histogram(10, 0, 100);
-		
-		for(int i = 0; i < 10; i++) {
-			histogram.addSample(10.0 * (i+1));
-		}//End for i
-		
-		for(int i = 0; i < 10; i++) {
-			double cdfValue = histogram.getCdfValue(10.0 * i);
-			assertEquals(i/10.0, cdfValue, .001);
-		}//End for i
-		
-	}//End testGetCdfValue()
-	
-	@Test
-	public void testCombine(){
-		
-		Histogram histogram1 = new Histogram(10, 0, 100);
-		histogram1.addSample(1.0);
-		histogram1.addSample(1.0);
-		histogram1.addSample(91.0);
-		histogram1.addSample(91.0);
-		
-		Histogram histogram2 = new Histogram(10, 0, 100);
-		histogram2.addSample(15.0);
-		histogram2.addSample(15.0);
-		histogram2.addSample(91.0);
-		histogram2.addSample(91.0);
-		
-		Histogram histogram3 = histogram1.combineHistogram(histogram2);
-		double[] yValues = histogram3.getYValues();
-		
-		assertEquals(2, yValues[0], .001);
-		assertEquals(2, yValues[1], .001);
-		assertEquals(4, yValues[9], .001);
-		
-	}//End testInsert()
+        histogram.addSample(1000);
+        double[] yValues = histogram.getYValues();
+        assertEquals(1, yValues[yValues.length - 1], .001);
 
-}//End class ServerTest
+    }
+
+    /**
+     * Tests {@link Histogram#getQuantile(double)}.
+     */
+    @Test
+    public void testGetQuantile() {
+
+        Histogram histogram = new Histogram(10, 0, 100);
+        for (int i = 0; i < 10; i++) {
+            histogram.addSample(10.0 * (i + 1));
+        }
+
+        for (int i = 0; i < 10; i++) {
+            double quantileValue = histogram.getQuantile(i / 10.0);
+            assertEquals(10.0 * i, quantileValue, .001);
+        }
+
+        double quantileValue = histogram.getQuantile(.99);
+        assertEquals(99, quantileValue, .001);
+    }
+
+    // TODO get rid of magic numbers
+    /**
+     * Tests {@link Histogram#getCdfValue(double)}.
+     */
+    @Test
+    public void testGetCdfValue() {
+        Histogram histogram = new Histogram(10, 0, 100);
+
+        for (int i = 0; i < 10; i++) {
+            histogram.addSample(10.0 * (i + 1));
+        }
+
+        for (int i = 0; i < 10; i++) {
+            double cdfValue = histogram.getCdfValue(10.0 * i);
+            assertEquals(i / 10.0, cdfValue, .001);
+        }
+
+    }
+
+    // TODO get rid of magic numbers
+    /**
+     * Tests combining histograms.
+     */
+    @Test
+    public void testCombine() {
+
+        Histogram histogram1 = new Histogram(10, 0, 100);
+        histogram1.addSample(1.0);
+        histogram1.addSample(1.0);
+        histogram1.addSample(91.0);
+        histogram1.addSample(91.0);
+
+        Histogram histogram2 = new Histogram(10, 0, 100);
+        histogram2.addSample(15.0);
+        histogram2.addSample(15.0);
+        histogram2.addSample(91.0);
+        histogram2.addSample(91.0);
+
+        Histogram histogram3 = histogram1.combineHistogram(histogram2);
+        double[] yValues = histogram3.getYValues();
+
+        assertEquals(2, yValues[0], .001);
+        assertEquals(2, yValues[1], .001);
+        assertEquals(4, yValues[9], .001);
+    }
+
+}

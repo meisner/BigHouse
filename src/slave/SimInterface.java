@@ -25,7 +25,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 package slave;
@@ -33,15 +33,41 @@ package slave;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 
-import stat.StatsCollection;
+import stat.StatisticsCollection;
 
 import core.Experiment;
 
+/**
+ * The interface through which all remote calls in the
+ * distributed simulation are defined.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
 public interface SimInterface extends Remote {
-	
+
+    /** Returns a simple ping message.
+     *
+     * @throws RemoteException - an exception
+     * if the remote interface fails
+     * @return a message that says hello
+     */
     String sayHello() throws RemoteException;
-    void RunExperiment(Experiment experiment) throws RemoteException;
-    StatsCollection getExperimentStats() throws RemoteException;
+
+    /** Runs an experiment remotely.
+     * @param experiment - the experiment to run
+     * @throws RemoteException - an exception if the remote interface fails
+     */
+    void runExperiment(Experiment experiment) throws RemoteException;
+
+    /** Gets a remote slave's statistics collection.
+     * @throws RemoteException - an exception if the remote interface fails
+     * @return the callee's statistics collection
+     */
+    StatisticsCollection getExperimentStats() throws RemoteException;
+
+    /** Stops the remote slave's experiment.
+     * @throws RemoteException - an exception if the remote interface fails
+     */
     void stop() throws RemoteException;
 
-}//End interface SimInterface
+}

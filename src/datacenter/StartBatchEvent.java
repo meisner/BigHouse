@@ -25,30 +25,50 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
+
 package datacenter;
 
-import core.Event;
+import core.AbstractEvent;
 import core.Experiment;
 
-public class StartBatchEvent extends Event {
+/**
+ * A StartBatchEvent represents a batch of jobs being started.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
+public final class StartBatchEvent extends AbstractEvent {
 
-	private BatchPowerNapServer  server;
-	
-	public StartBatchEvent(double time, Experiment experiment, BatchPowerNapServer server) {
-		super(time, experiment);
-		
-		this.server = server;
+    /**
+     * Serialization id.
+     */
+    private static final long serialVersionUID = 1L;
 
-	}//End StartBatchEvent 
+    /**
+     * The BatchPowerNapServer on which the jobs will start.
+     */
+    private BatchPowerNapServer batchServer;
 
-	@Override
-	public void process() {
-		
-		this.server.startBatch(this.time);
-		
-	}//End process()	
-	
-}//End class StartBatchEvent
+    /**
+     * Constructs a StartBatchEvent.
+     * @param time - The time the batch should start
+     * @param experiment - The experiment the event happens in
+     * @param server - The server on which the jobs will start
+     */
+    public StartBatchEvent(final double time, final Experiment experiment,
+                           final BatchPowerNapServer server) {
+        super(time, experiment);
+        this.batchServer = server;
+    }
+
+    /**
+     * Processes this event by starting a batch (accepting jobs to the server).
+     */
+    @Override
+    public void process() {
+        this.batchServer.startBatch(this.getTime());
+    }
+
+}

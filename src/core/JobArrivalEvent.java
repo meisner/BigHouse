@@ -33,23 +33,47 @@ package core;
 
 import datacenter.Server;
 
-public class JobArrivalEvent extends JobEvent implements Constants{
-	
-	//Stats variables
-	//private double interarrival_time;
-	private Server server;
-	
-	public JobArrivalEvent(double time, Experiment experiment, Job job, Server server, double interarrivalTime){
-		super(time, experiment, job);
-		this.server = server;
-		//this.interarrival_time = interarrivalTime;
-	}
+/**
+ * Represents a job arriving at a server.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
+public final class JobArrivalEvent extends JobEvent {
 
-	@Override
-	public void process() {
-		this.server.createNewArrival(this.time);
-		this.server.insertJob(this.time, this.job);
-		this.job.markArrival(this.time);		
-	}
-		
-}//End class JobArrivalEvent
+    /**
+     * The serialization id.
+     */
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * The server at which the job arrives.
+     */
+    private Server server;
+
+    /**
+     * Constructs a job arriving at a server.
+     *
+     * @param time - the time the job arrives
+     * @param experiment - the experiment the event happens in
+     * @param job = the job that arrives
+     * @param aServer - the server the job arrives at
+     */
+    public JobArrivalEvent(final double time,
+                           final Experiment experiment,
+                           final Job job,
+                           final Server aServer) {
+        super(time, experiment, job);
+        this.server = aServer;
+    }
+
+    /**
+     * Has the job arrive at a server.
+     */
+    @Override
+    public void process() {
+        this.server.createNewArrival(this.getTime());
+        this.server.insertJob(this.getTime(), this.getJob());
+        this.getJob().markArrival(this.getTime());
+    }
+
+}

@@ -25,12 +25,12 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 package generator;
 
-
+//TODO Remove this
 public class ErlangkGenerator extends Generator {
 
 	private int k;
@@ -63,6 +63,11 @@ public class ErlangkGenerator extends Generator {
 		return sum;
 	}
 	
+    /**
+     * Gets the name of the generator.
+     *
+     * @return the name of the generator
+     */
 	@Override
 	public String getName() {
 		return "Erlangk";

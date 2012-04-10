@@ -32,169 +32,286 @@
 
 package core;
 
-import generator.Generator;
 import generator.MTRandom;
 
 import java.io.Serializable;
 import java.util.Iterator;
 import java.util.Vector;
 
-import core.Constants.StatName;
-
 import stat.Statistic;
-import stat.StatsCollection;
+import stat.StatisticsCollection;
 import datacenter.DataCenter;
 import datacenter.Server;
 
-/** This class contains all components of an experiment */
-public class Experiment implements Serializable,Constants,Cloneable {
+/**
+ * This class contains all components of an experiment.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
+public final class Experiment implements Serializable, Cloneable {
 
-	private static final long serialVersionUID = 1L;
-	private EventQueue event_queue;
-	private long nRan;
-	private double current_time;
-	
-	private DataCenter data_center;
-	private ExperimentInput experiment_input;
-	private ExperimentOutput expriment_output;
-	private String experiment_name;
-	private int event_limit;
-	private MTRandom random;
-	private boolean stop_at_steady_state;
-	private boolean stop;
-	
-	public Experiment(String experimentName, MTRandom random, ExperimentInput experimentInput, ExperimentOutput experimentOutput){
-		this.stop = false;
-		this.random = random;
-		
-		this.current_time = 0.0d;
-		this.event_limit = 0;
-		
-		this.experiment_name = experimentName;
-		this.experiment_input = experimentInput;
-		this.expriment_output = experimentOutput;
-		
-		this.event_queue = new EventQueue();
-		this.stop_at_steady_state = false;
-	}
-	
-	public void setSeed(long newSeed) {
-		this.random.setSeed(newSeed);
-	}
-	
-	public void initialize(){
-		this.data_center = this.experiment_input.getDataCenter();
-		
-		Vector<Server> servers = data_center.getServers();
-		//Make sure all the arrival processes have begun
-		Iterator<Server> iterator = servers.iterator();
-		while(iterator.hasNext()){
-			Server server = iterator.next();
-			server.createNewArrival(0.0);
-		}
-	}
-	
-	public String getName(){
-		return this.experiment_name;
-	}
-	
-	public ExperimentInput getInput(){
-		return this.experiment_input;
-	}
-	
-	public ExperimentOutput getOutput(){
-		return this.expriment_output;
-	}
-	
-	public StatsCollection getStats(){
-		return this.expriment_output.getStats();
-	}
-	
-	public void setEventLimit(int eventLimit){
-		this.event_limit = eventLimit;
-	}
-	
-	public void run(){
-		this.initialize();
-		long startTime = System.currentTimeMillis();
-		
-		this.nRan = 0;
-		System.out.println("Starting simulation");
-		int orderOfMag = 5;
-		long printSamples = (long)Math.pow(10,orderOfMag);
-		while(true && !stop){		
-			Event currentEvent = this.event_queue.nextEvent();
-//			Sim.debug(6,"Queue size " + this.event_queue.size());
-			this.current_time = currentEvent.getTime();
-//			Sim.debug(DEBUG_VERBOSE, "  processing " + currentEvent.toString());
-			currentEvent.process();
-			double time = currentEvent.getTime();
-//			this.data_center.updateStatistics(time);
-			this.nRan++;
-			if(this.nRan > printSamples){
-				System.out.println("Processed "+this.nRan+" events");
-				Iterator<Statistic> statIter = this.expriment_output.getStats().getAllStats();
-				while(statIter.hasNext()){
-					Statistic currentStat = statIter.next();
-					if(!currentStat.isConverged()){
-						System.out.println("Still waiting for " + currentStat.getStatName() + " at mean converge of " +currentStat.getMeanAccuracy()+ " and quantile converge of " +currentStat.getQuantileAccuracy());
-						currentStat.printStatInfo();
-					}
-				}
-				orderOfMag++;
-				printSamples = (long)Math.pow(10,orderOfMag);
-			}
+    /** The Serialization id. */
+    private static final long serialVersionUID = 1L;
 
-			if(this.getStats().allStatsConverged()){
-				System.out.println("Ending from convergence");
-				break;
-			}
-			
-			if(this.getStats().allStatsSteadyState() && this.stop_at_steady_state){
-				System.out.println("Halting at steady state");
-				break;
-			}
-			
-			if(event_limit > 0 && nRan > event_limit){
-				break;				
-			}
-		}
-		
-		long endTime = System.currentTimeMillis();
-		double execTime = (endTime - startTime)/1000.0;	
+    /** The experiment's event queue. */
+    private EventQueue eventQueue;
 
-	}
-	
-	public long getnEventsSimulated(){
-		return nRan;
-	}
+    /** The number of events that have been processed. */
+    private long nEventsProccessed;
 
-	public void addEvent(Event event) {
-		this.event_queue.addEvent(event);			
-	}
-	
-	public void cancelEvent(Event event) {
-		this.event_queue.cancelEvent(event);
-	}
+    /** The current time of the simulation. */
+    private double currentTime;
 
-	public double getEndTime() {
-		return this.current_time;
-	}
+    /**
+     * The datacenter for the experiment.
+     */
+    private DataCenter dataCenter;
 
-	public void runToSteadyState() {
-		Iterator<Statistic> stats = this.getStats().getAllStats();
-		while(stats.hasNext()) {
-			Statistic stat = stats.next();
-			stat.setJustBins(true);
-		}
-		this.stop_at_steady_state = true;
-		this.run();
-	}
+    /**
+     * The input to the experiment.
+     */
+    private ExperimentInput experimentInput;
 
-	public synchronized void stop() {
-		this.stop = true;
-	}
-	
-	
+    /**
+     * The output to the experiment.
+     */
+    private ExperimentOutput exprimentOutput;
+
+    /**
+     * The name of the experiment.
+     */
+    private String experimentName;
+
+    /**
+     * The limit (in number of events) on how many events can be processed.
+     */
+    private int eventLimit;
+
+    /**
+     * THe random number generator for this experiment.
+     */
+    private MTRandom random;
+
+    /**
+     * A flag determining if this experiment should stop once it
+     * reaches steady state. Used to just run the characterization phase
+     * of the experiment (for the master).
+     */
+    private boolean stopAtSteadyState;
+
+    /**
+     * A flag indicating the simulation should stop at the next possible step.
+     */
+    private boolean stop;
+
+    /**
+     * Constructs a new experiment.
+     *
+     * @param theExperimentName - the name of the experiment
+     * @param aRandom - the random number generator
+     * @param theExperimentInput - inputs to the experiment
+     * @param thExperimentOutput - outputs of the experiment
+     */
+    public Experiment(final String theExperimentName,
+                      final MTRandom aRandom,
+                      final ExperimentInput theExperimentInput,
+                      final ExperimentOutput thExperimentOutput) {
+        this.stop = false;
+        this.random = aRandom;
+        this.currentTime = 0.0d;
+        this.eventLimit = 0;
+        this.experimentName = theExperimentName;
+        this.experimentInput = theExperimentInput;
+        this.exprimentOutput = thExperimentOutput;
+        this.eventQueue = new EventQueue();
+        this.stopAtSteadyState = false;
+    }
+
+    /**
+     * Sets the random seed for this experiment's random number generator.
+     * @param newSeed - the random seed for this experiment's
+     * random number generator
+     */
+    public void setSeed(final long newSeed) {
+        this.random.setSeed(newSeed);
+    }
+
+    /**
+     * Initializes the experiment so it is ready to run.
+     * This entails priming every server with an initial arrival event.
+     */
+    public void initialize() {
+        this.dataCenter = this.experimentInput.getDataCenter();
+        Vector<Server> servers = dataCenter.getServers();
+        // Make sure all the arrival processes have begun
+        Iterator<Server> iterator = servers.iterator();
+        while (iterator.hasNext()) {
+            Server server = iterator.next();
+            server.createNewArrival(0.0);
+        }
+    }
+
+    /**
+     * Gets the name of the experiment.
+     *
+     * @return the name of the experiment
+     */
+    public String getName() {
+        return this.experimentName;
+    }
+
+    /**
+     * Gets the input to the experiment.
+     *
+     * @return the input to the experiment
+     */
+    public ExperimentInput getInput() {
+        return this.experimentInput;
+    }
+
+    /**
+     * Gets the output of the experiment.
+     *
+     * @return the output of the experiment
+     */
+    public ExperimentOutput getOutput() {
+        return this.exprimentOutput;
+    }
+
+    /**
+     * Gets the statistics collection for the experiment.
+     *
+     * @return the statistics collection for the experiment
+     */
+    public StatisticsCollection getStats() {
+        return this.exprimentOutput.getStats();
+    }
+
+    /**
+     * Sets a limit on the number of events the experiment will process.
+     *
+     * @param theEventLimit - the limit in event on processed events
+     */
+    public void setEventLimit(final int theEventLimit) {
+        this.eventLimit = theEventLimit;
+    }
+
+    /**
+     * Runs the experiment.
+     * The builk of simulation happens in this.
+     */
+    public void run() {
+        this.initialize();
+        long startTime = System.currentTimeMillis();
+
+        this.nEventsProccessed = 0;
+        Sim.printBanner();
+        System.out.println("Starting simulation");
+        //TODO fix magic numbers
+        int orderOfMag = 5;
+        long printSamples = (long) Math.pow(10, orderOfMag);
+        while (!stop) {
+            Event currentEvent = this.eventQueue.nextEvent();
+            this.currentTime = currentEvent.getTime();
+            currentEvent.process();
+            this.nEventsProccessed++;
+            if (this.nEventsProccessed > printSamples) {
+                System.out.println("Processed " + this.nEventsProccessed
+                            + " events");
+                Iterator<Statistic> statIter = this.exprimentOutput.getStats()
+                        .getAllStats();
+                while (statIter.hasNext()) {
+                    Statistic currentStat = statIter.next();
+                    if (!currentStat.isConverged()) {
+                        System.out.println("Still waiting for "
+                                + currentStat.getStatName()
+                                + " at mean converge of "
+                                + currentStat.getMeanAccuracy()
+                                + " and quantile converge of "
+                                + currentStat.getQuantileAccuracy());
+                        currentStat.printStatInfo();
+                    }
+                }
+                orderOfMag++;
+                printSamples = (long) Math.pow(10, orderOfMag);
+            }
+
+            if (this.getStats().allStatsConverged()) {
+                System.out.println("Ending from convergence");
+                break;
+            }
+
+            if (this.getStats().allStatsSteadyState()
+                    && this.stopAtSteadyState) {
+                System.out.println("Halting at steady state");
+                break;
+            }
+
+            if (eventLimit > 0 && nEventsProccessed > eventLimit) {
+                break;
+            }
+        }
+
+        long endTime = System.currentTimeMillis();
+        double execTime = (endTime - startTime) / 1000.0;
+        System.out.println("The experiment took " + execTime
+                        + " seconds to run");
+    }
+
+    /**
+     * Gets the number of events that have been simulated.
+     *
+     * @return the number of events that have been simulated
+     */
+    public long getNEventsSimulated() {
+        return nEventsProccessed;
+    }
+
+    /**
+     * Adds an event to the experiment's event queue.
+     *
+     * @param event - the event to add
+     */
+    public void addEvent(final Event event) {
+        this.eventQueue.addEvent(event);
+    }
+
+    /**
+     * Cancels an event so that it no longer occurs.
+     *
+     * @param event - the event to cancel
+     */
+    public void cancelEvent(final Event event) {
+        this.eventQueue.cancelEvent(event);
+    }
+
+    /**
+     * Get the current time of the simulation.
+     *
+     * @return the current time of the simulation
+     */
+    public double getCurrentTime() {
+        return this.currentTime;
+    }
+
+    /**
+     * Runs the experiment to steady state, but no further.
+     */
+    public void runToSteadyState() {
+        Iterator<Statistic> stats = this.getStats().getAllStats();
+        while (stats.hasNext()) {
+            Statistic stat = stats.next();
+            stat.setJustBins(true);
+        }
+        this.stopAtSteadyState = true;
+        this.run();
+    }
+
+    /**
+     * Stops the simulation.
+     */
+    public synchronized void stop() {
+        this.stop = true;
+    }
 
 }

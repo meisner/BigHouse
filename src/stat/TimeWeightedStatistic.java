@@ -25,8 +25,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
- *
+ * @author David Meisner (meisner@umich.edu)
  */
 package stat;
 
@@ -34,111 +33,164 @@ import core.Sim;
 import core.Constants.StatName;
 import core.Constants.TimeWeightedStatName;
 
+/**
+ * A time weighted statistic is used for sequences of values
+ * which should not be weighted equally. For example, if the
+ * utilization of a machine is sampled at non-uniform time periods,
+ * the utilization of each should be weighted by the amount of time
+ * the machine was at that utilization.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
 public class TimeWeightedStatistic extends Statistic {
 
-	private double window_size;
-	private double sample_window_start;
-	private double last_sample_time;
-	private double average_accum;
-	private double old_value;
-	private boolean old_value_set;
-	
-	private double accum_weight; //Used for sanity checking
-	
-	private TimeWeightedStatName name;
+    /** The serialization id. */
+    private static final long serialVersionUID = 1L;
 
-	public TimeWeightedStatistic(StatsCollection statsCollection, TimeWeightedStatName name, int nWarmupSamples, double meanPrecision, double quantile, double quantilePrecision, double windowSize) {
-		super(statsCollection, null, nWarmupSamples,meanPrecision, quantile, quantilePrecision);
+    /** The size of the window to weight statistics. */
+    private double windowSize;
 
-		this.name = name;
-		this.sample_window_start = 0.0d;
-		this.window_size = windowSize;
-		this.last_sample_time = 0.0d;
-		this.average_accum = 0.0d;
-		this.accum_weight = 0.0d;
-		this.old_value = 0.0d;
-		this.old_value_set = false;
-		
-	}//End TimeWeightedStatistic()
+    //TODO document these
+    private double sampleWindowStart;
 
-	
-	public void addSample(double newValue, double time){
-		
-		
-//		System.out.println("at " + time + " util is " + newValue);
-		if(this.old_value_set == false) {
-			this.old_value = newValue;
-			this.old_value_set = true;
-			return;
-		}
-		
-		double value = this.old_value;
-		this.old_value = newValue;
-		double currentPeriodLength = time - this.sample_window_start;
+    private double lastSampleTime;
 
-		if(currentPeriodLength > this.window_size) {
-			
-			//There are three pieces			
-			//The part that falls in the first window
-			//  | -------------------------------------------|---------------------------|----------------------|
-			//  sample_window_start        ^last_sample_time         ^time
-			double weight = (this.window_size - (this.last_sample_time -  this.sample_window_start));
-			if(weight/this.window_size > 1.0) {
-				System.out.println("weight " + weight + " window_size " +this.window_size + " last_sample_time " + this.last_sample_time + " sample_window_start "+this.sample_window_start);
-				Sim.fatalError("This ratio shouldn't be > 1");			
-			}//End if
-			if(Math.abs(weight) < 1e-8 ) {
-				weight=0;
-			}
-			this.accum_weight += weight;
-			double firstWindowPart = weight * value;
-			average_accum += firstWindowPart;
-			
-			double overallAverage = average_accum/this.window_size;
+    private double averageAccum;
 
-			
-//			if(Math.abs(overallAverage) < 1e-6 ) {
-//				overallAverage=0;
-//			}
-//			else 
-				if (overallAverage < 0 ){
-					System.out.println("average_accum "+average_accum+",  weight "+weight +", last_sample_time " + last_sample_time + ", sample_window_start "+ sample_window_start + ", value " + value+ ", currentPeriodLength " + currentPeriodLength + ", time "+ time);
-				Sim.fatalError("overallAverage is < 0: " + overallAverage);
-			}
-			super.addSample(overallAverage);
-			
-			double remainder = currentPeriodLength - this.window_size;
-	
-			//A window that is just one value
-			int wholePeriods = (int) Math.floor(remainder/this.window_size);
-			
-			for(int i = 0; i < wholePeriods; i++) {
-				super.addSample(value);
-			}//End for i
-			
-			//A new window with just a portion filled
-			remainder = remainder - this.window_size * (wholePeriods);
-			this.average_accum = remainder * value;
-			this.accum_weight = remainder;
+    private double oldValue;
 
-			this.sample_window_start = this.window_size * (wholePeriods + 1) + this.sample_window_start;
-			this.last_sample_time = time;	
+    private boolean oldValueSet;
 
-//			System.out.println("Has good samples: " + super.getNGoodSamples());
-			
-		} else { 
-			
-			double timeWeight = time - this.last_sample_time;
-			this.average_accum += timeWeight * value;
-			this.last_sample_time = time;
-			
-		}//End if
+    /** Used for sanity checking. */
+    private double accumWeight;
 
-	}//End addSample()
+    /** The name of the time weighted statistic. */
+    private TimeWeightedStatName name;
 
-	
-	public void setWindowSize(double size) {
-		this.window_size = size;		
-	}
+    /**
+     * Creates a new time weighted statistic.
+     *
+     * @param statsCollection - the statistic collection this is part of
+     * @param theName - the name of the statistic
+     * @param nWarmupSamples - the number of warm up samples to discard
+     * @param meanPrecision - the required mean precision
+     * @param quantile - the quantile desired for estimates
+     * @param quantilePrecision - the required quantile precision
+     * @param theWindowSize - the window size to weight over
+     */
+    public TimeWeightedStatistic(final StatisticsCollection statsCollection,
+                                 final TimeWeightedStatName theName,
+                                 final int nWarmupSamples,
+                                 final double meanPrecision,
+                                 final double quantile,
+                                 final double quantilePrecision,
+                                 final double theWindowSize) {
+        super(statsCollection,
+                null,
+                nWarmupSamples,
+                meanPrecision,
+                quantile,
+                quantilePrecision);
+        this.name = theName;
+        this.sampleWindowStart = 0.0d;
+        this.windowSize = theWindowSize;
+        this.lastSampleTime = 0.0d;
+        this.averageAccum = 0.0d;
+        this.accumWeight = 0.0d;
+        this.oldValue = 0.0d;
+        this.oldValueSet = false;
+    }
 
-}//End class TimeWeightedStatistic
+    /**
+     * Add a sample to the time weighted statistic.
+     *
+     * @param newValue - the value of the sample
+     * @param time - the time the sample is added
+     */
+    public void addSample(final double newValue, final double time) {
+
+        if (!this.oldValueSet) {
+            this.oldValue = newValue;
+            this.oldValueSet = true;
+            return;
+        }
+
+        double value = this.oldValue;
+        this.oldValue = newValue;
+        double currentPeriodLength = time - this.sampleWindowStart;
+
+        if (currentPeriodLength > this.windowSize) {
+
+            // There are three pieces
+            // The part that falls in the first window
+            // |
+            // -------------------------------------------|---------------------------|----------------------|
+            // sample_window_start ^last_sample_time ^time
+            double weight = (this.windowSize
+                            - (this.lastSampleTime - this.sampleWindowStart));
+            if (weight / this.windowSize > 1.0) {
+                System.out.println("weight " + weight + " window_size "
+                        + this.windowSize + " last_sample_time "
+                        + this.lastSampleTime + " sample_window_start "
+                        + this.sampleWindowStart);
+                Sim.fatalError("This ratio shouldn't be > 1");
+            }
+
+            if (Math.abs(weight) < 1e-8) {
+                weight = 0;
+            }
+            this.accumWeight += weight;
+            double firstWindowPart = weight * value;
+            averageAccum += firstWindowPart;
+
+            double overallAverage = averageAccum / this.windowSize;
+
+            if (overallAverage < 0) {
+                System.out.println("average_accum " + averageAccum
+                        + ",  weight " + weight + ", last_sample_time "
+                        + lastSampleTime + ", sample_window_start "
+                        + sampleWindowStart + ", value " + value
+                        + ", currentPeriodLength " + currentPeriodLength
+                        + ", time " + time);
+                Sim.fatalError("overallAverage is < 0: " + overallAverage);
+            }
+            super.addSample(overallAverage);
+
+            double remainder = currentPeriodLength - this.windowSize;
+
+            // A window that is just one value
+            int wholePeriods = (int) Math.floor(remainder / this.windowSize);
+
+            for (int i = 0; i < wholePeriods; i++) {
+                super.addSample(value);
+            }
+
+            // A new window with just a portion filled
+            remainder = remainder - this.windowSize * (wholePeriods);
+            this.averageAccum = remainder * value;
+            this.accumWeight = remainder;
+
+            this.sampleWindowStart = this.windowSize * (wholePeriods + 1)
+                    + this.sampleWindowStart;
+            this.lastSampleTime = time;
+
+        } else {
+
+            double timeWeight = time - this.lastSampleTime;
+            this.averageAccum += timeWeight * value;
+            this.lastSampleTime = time;
+
+        }
+
+    }
+
+    /**
+     * Sets the window (in seconds) over which samples are weighted.
+     *
+     * @param size - the size of the window (in seconds)
+     */
+    public void setWindowSize(final double size) {
+        this.windowSize = size;
+    }
+
+}

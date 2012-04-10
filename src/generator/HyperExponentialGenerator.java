@@ -25,13 +25,14 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 package generator;
 
 import java.util.Random;
 
+//TODO delete this
 public class HyperExponentialGenerator extends Generator {
 
 
@@ -79,6 +80,12 @@ public class HyperExponentialGenerator extends Generator {
 	    		
 		return sum;
 	}
+	
+    /**
+     * Gets the name of the generator.
+     *
+     * @return the name of the generator
+     */
 	@Override
 	public String getName() {
 		return "HyperExponential";

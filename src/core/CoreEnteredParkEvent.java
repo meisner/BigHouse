@@ -33,17 +33,43 @@ package core;
 
 import datacenter.Core;
 
-public class CoreEnteredParkEvent extends Event {
+/**
+ * Represents a core entering park mode.
+ *
+ * @author David Meisner (meisner@umich.edu)
+ */
+public final class CoreEnteredParkEvent extends AbstractEvent {
 
-	private Core core;
-	public CoreEnteredParkEvent(double time, Experiment experiment, Core core) {
-		super(time, experiment);
-		this.core = core;
-	}//End CoreEnteredParkEvent()
+    /**
+     * The serialization ID.
+     */
+    private static final long serialVersionUID = 1L;
 
-	@Override
-	public void process() {
-		this.core.enterPark(this.time);
-	}//End process()
+    /**
+     * The core which will be put into park.
+     */
+    private Core core;
 
-}//CoreEnteredParkEvent
+    /**
+     * Constructs an Event representing a CPU core entering core parking.
+     *
+     * @param time - the time at which the core enters the park state.
+     * @param experiment - the experiment of the event.
+     * @param aCore - the core which is entering core parking.
+     */
+    public CoreEnteredParkEvent(final double time,
+                                final Experiment experiment,
+                                final Core aCore) {
+        super(time, experiment);
+        this.core = aCore;
+    }
+
+    /**
+     * Puts the core into park.
+     */
+    @Override
+    public void process() {
+        this.core.enterPark(this.time);
+    }
+
+}

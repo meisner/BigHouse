@@ -25,28 +25,51 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @author: David Meisner (meisner@umich.edu)
+ * @author David Meisner (meisner@umich.edu)
  *
  */
 package datacenter;
 
-import core.Event;
+import core.AbstractEvent;
 import core.Experiment;
 
-public class PowerNapTransitionedToNapEvent extends Event {
-	
-	private PowerNapServer server;
+/**
+ * Represents a PowerNap server transitioning from Active to Nap.
+ *  
+ * @author David Meisner (meisner@umich.edu)
+ */
+public final class PowerNapTransitionedToNapEvent extends AbstractEvent {
 
-	public PowerNapTransitionedToNapEvent(double time, Experiment experiment, PowerNapServer server) {
-		super(time, experiment);
+    /**
+     * The serialization id.
+     */
+    private static final long serialVersionUID = 1L;
 
-		this.server = server;
-		
-	}//End PowerNapTransitionedToNapEvent()
+    /**
+     * The server that is transitioning.
+     */
+    private PowerNapServer server;
 
-	@Override
-	public void process() {
-		this.server.setToNap(this.time);		
-	}//End process()
+    /**
+     * Creates a new PowerNapTransitionedToNapEvent.
+     *
+     * @param time - the time the server transitioned
+     * @param experiment - the experiment the event takes place in
+     * @param aServer - the server that transitioned
+     */
+    public PowerNapTransitionedToNapEvent(final double time,
+                                          final Experiment experiment,
+                                          final PowerNapServer aServer) {
+        super(time, experiment);
+        this.server = aServer;
+    }
 
-}//End class PowerNapTransitionedToNapEvent
+    /**
+     * Sets the server to nap.
+     */
+    @Override
+    public void process() {
+        this.server.setToNap(this.getTime());
+    }
+
+}
