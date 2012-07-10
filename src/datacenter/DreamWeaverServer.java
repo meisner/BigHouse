@@ -141,8 +141,10 @@ public class DreamWeaverServer extends PowerNapServer {
         } else {
 
             if (this.getRemainingCapacity() > 0) {
-                super.insertJob(time, job);
-                this.experiment.cancelEvent(job.getJobFinishEvent());
+            	// TODO This bypassing behavior is a bit of hack and
+            	// should probably be improved at some point.
+                super.directlyInsertJob(time, job);
+                this.experiment.cancelEvent(job.getJobFinishEvent());               
                 double timeout = time + this.maxDelay;
                 DreamWeaverJobTimeoutEvent timeoutEvent
                     = new DreamWeaverJobTimeoutEvent(timeout,

@@ -168,6 +168,18 @@ public class PowerNapServer extends Server {
 
         }
     }
+    
+    /**
+     * Directly inserts the job into the server, bypassing PowerNap logic.
+     * This is a bit of hack and should be changed eventually.
+     *
+     * @param time - the time the job is inserted
+     * @param job - the job to be inserted
+     */
+    public void directlyInsertJob(final double time, final Job job) {
+    	super.insertJob(time, job);
+   
+    }
 
     /**
      * Get the time for the PowerNap server to transition.

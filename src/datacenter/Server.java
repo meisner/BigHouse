@@ -179,7 +179,7 @@ public class Server implements Powerable, Serializable {
     /**
      * Creates a new arrival for the server.
      *
-     * @param time - the time the new arrival lis created
+     * @param time - the time the new arrival is created
      */
     public final void createNewArrival(final double time) {
         double interarrivalTime = this.arrivalGenerator.next();
